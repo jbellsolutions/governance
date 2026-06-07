@@ -29,15 +29,48 @@ class GovernanceCrew:
       - Slack alerts on budget denial or failure
     """
 
-    def __init__(self, crew, tenant_id: str, crew_id: str, est_cost_per_run: float = 0.10):
+    def __init__(
+        self,
+        crew,
+        tenant_id: str,
+        crew_id: str,
+        est_cost_per_run: float = 0.10,
+        business_id: str = None,
+    ):
         self.crew = crew
         self.tenant_id = tenant_id
         self.crew_id = crew_id
         self.est_cost_per_run = est_cost_per_run
+        self.business_id = business_id or tenant_id
 
-        # Wire callbacks into the crew instance
-        self.crew.step_callback = audit_stream.make_step_callback(tenant_id, crew_id)
+        # Wire callbacks — audit stream + real-time event bus
+        self.crew.step_callback = self._make_step_callback()
         self.crew.task_callback = audit_stream.make_task_callback(tenant_id)
+
+    def _make_step_callback(self):
+        base = audit_stream.make_step_callback(self.tenant_id, self.crew_id)
+        business_id = self.business_id
+        crew_id = self.crew_id
+
+        def wrapped(step_output):
+            base(step_output)
+            try:
+                from governance.event_bus import publish
+                if hasattr(step_output, "tool"):
+                    agent_name = getattr(step_output, "log", crew_id)[:60]
+                    msg = f"Tool call: {step_output.tool} — {str(getattr(step_output, 'tool_input', ''))[:120]}"
+                elif hasattr(step_output, "return_values"):
+                    agent_name = crew_id
+                    msg = f"Finished: {str(step_output.return_values)[:150]}"
+                else:
+                    agent_name = crew_id
+                    msg = str(step_output)[:150]
+                publish("agent_step", business_id, team_id=crew_id,
+                        agent_name=agent_name, message=msg, level="info")
+            except Exception:
+                pass
+
+        return wrapped
 
     def kickoff(self, inputs: Optional[dict] = None) -> Any:
         """

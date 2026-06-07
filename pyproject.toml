@@ -21,5 +21,6 @@ packages = [
     "governance.integrations",
     "governance.business_templates",
     "governance.paperclip",
+    "governance.web",
 ]
 package-dir = {"governance" = "."}

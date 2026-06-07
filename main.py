@@ -3,11 +3,12 @@ Autonomous Agent Governance System
 Entry point — launch council deliberation, business crews, or servers
 
 Usage:
-  python main.py --council              # Run 5-round expert deliberation
+  python main.py --panel               # Start governance web panel (:8000)  ← primary
+  python main.py --council             # Run 5-round expert deliberation
   python main.py --business exec_team  # Launch executive crew (interactive)
   python main.py --business sales      # Launch sales crew
   python main.py --business marketing  # Launch marketing crew
-  python main.py --serve               # Start full governance API server (:8080)
+  python main.py --serve               # Start full governance API server (:8000)
   python main.py --specialists         # Start OpenSwarm specialist layer (:8080)
   python main.py --slack               # Start Slack bridge only (:3001)
   python main.py --status              # System health check
@@ -68,6 +69,17 @@ def cmd_business(biz_type: str, company_name: str = None, tenant_id: str = None)
         print(f"Unknown business type: {biz_type}")
         print("Options: exec_team, sales, marketing")
         sys.exit(1)
+
+
+def cmd_panel(port: int = 8000):
+    """Start the governance web panel — the primary interface."""
+    import uvicorn
+    from governance.panel import app
+    print(f"\nGovernance Panel: http://0.0.0.0:{port}")
+    print(f"  Web UI:   http://localhost:{port}/")
+    print(f"  API docs: http://localhost:{port}/docs")
+    print(f"\nOpen http://localhost:{port} in your browser to manage businesses.")
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 
 
 def cmd_serve(port: int = 8000):
@@ -215,6 +227,7 @@ def cmd_status():
 
 def main():
     parser = argparse.ArgumentParser(description="Autonomous Agent Governance System")
+    parser.add_argument("--panel",        action="store_true",  help="Start governance web panel (primary UI)")
     parser.add_argument("--council",      action="store_true",  help="Run 5-round expert council")
     parser.add_argument("--business",     type=str,             help="Crew type: exec_team, sales, marketing")
     parser.add_argument("--company",      type=str, default=None, help="Company name for the crew")
@@ -227,18 +240,20 @@ def main():
 
     args = parser.parse_args()
 
-    if not any([args.council, args.business, args.serve, args.specialists, args.slack, args.status]):
+    if not any([args.panel, args.council, args.business, args.serve, args.specialists, args.slack, args.status]):
         parser.print_help()
         print("\nQuick start:")
+        print("  python main.py --panel                         # web panel — manage all businesses (:8000)")
         print("  python main.py --status                        # health check")
         print("  python main.py --council                       # 5-round expert deliberation")
-        print("  python main.py --business exec_team            # launch executive crew")
+        print("  python main.py --business exec_team            # launch executive crew (CLI)")
         print("  python main.py --specialists                   # start specialist layer (:8080)")
-        print("  python main.py --serve                         # governance control plane (:8000)")
         return
 
     if args.status:
         cmd_status()
+    elif args.panel:
+        cmd_panel(args.port)
     elif args.council:
         cmd_council()
     elif args.business:
