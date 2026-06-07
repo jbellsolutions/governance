@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  paperclip:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - paperclip_data:/app/.paperclip
+    environment:
+      - PORT=3000
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - NODE_ENV=production
+    ports:
+      - "3000:3000"
+    command: >
+      sh -c "
+        npm install -g pnpm &&
+        npx paperclipai@latest onboard --yes --port 3000
+      "
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  governance:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENAI_BASE_URL=https://openrouter.ai/api/v1
+      - PAPERCLIP_URL=http://paperclip:3000
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - SLACK_SIGNING_SECRET=${SLACK_SIGNING_SECRET}
+      - COMPOSIO_API_KEY=${COMPOSIO_API_KEY}
+      - EXPERT_MODEL=${EXPERT_MODEL:-deepseek/deepseek-chat-v4}
+      - MODERATOR_MODEL=${MODERATOR_MODEL:-anthropic/claude-opus-4-8}
+      - EXEC_MODEL=${EXEC_MODEL:-anthropic/claude-sonnet-4-6}
+      - SALES_MODEL=${SALES_MODEL:-moonshotai/kimi-2}
+      - MARKETING_MODEL=${MARKETING_MODEL:-moonshotai/kimi-2}
+    ports:
+      - "8080:8080"
+      - "3001:3001"
+    depends_on:
+      paperclip:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  paperclip_data:
