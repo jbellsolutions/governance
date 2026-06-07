@@ -21,6 +21,10 @@ PAPERCLIP_BIND="${PAPERCLIP_BIND:-lan}"    # lan = 0.0.0.0 (behind nginx). loopb
 # Secrets — export these before running, or edit here:
 OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
 COMPOSIO_API_KEY="${COMPOSIO_API_KEY:-}"
+SLACK_BOT_TOKEN="${SLACK_BOT_TOKEN:-}"
+NOTION_API_KEY="${NOTION_API_KEY:-}"
+NOTION_PARENT_PAGE_ID="${NOTION_PARENT_PAGE_ID:-}"
+OBSIDIAN_VAULT_PATH="${OBSIDIAN_VAULT_PATH:-$APP_DIR/vault}"
 # ──────────────────────────────────────────────────────────────────────────────
 
 log() { printf '\033[1;36m[deploy]\033[0m %s\n' "$*"; }
@@ -52,6 +56,7 @@ pip install -e . -r requirements.txt >/dev/null
 deactivate
 
 log "Writing environment file ($APP_DIR/.env)…"
+mkdir -p "$OBSIDIAN_VAULT_PATH"
 cat > "$APP_DIR/.env" <<EOF
 OPENROUTER_API_KEY=$OPENROUTER_API_KEY
 OPENAI_API_KEY=$OPENROUTER_API_KEY
@@ -60,6 +65,14 @@ COMPOSIO_API_KEY=$COMPOSIO_API_KEY
 COMPOSIO_MAX_CONCURRENT=10
 SPECIALIST_MODEL=deepseek/deepseek-chat-v4
 STATE_DB_PATH=$APP_DIR/data/governance.db
+INTEGRATIONS_URL=http://127.0.0.1:8080
+PAPERCLIP_API_URL=http://127.0.0.1:3000
+OBSIDIAN_VAULT_PATH=$OBSIDIAN_VAULT_PATH
+NOTION_API_KEY=$NOTION_API_KEY
+NOTION_PARENT_PAGE_ID=$NOTION_PARENT_PAGE_ID
+SLACK_BOT_TOKEN=$SLACK_BOT_TOKEN
+SLACK_OWNER_CHANNEL=#governance
+SLACK_RELAY_PORT=3001
 EOF
 
 log "Creating systemd service: integrations sidecar (loopback :8080)…"
@@ -74,6 +87,42 @@ EnvironmentFile=$APP_DIR/.env
 ExecStart=$APP_DIR/.venv/bin/python main.py --specialists --port 8080
 Restart=always
 RestartSec=5
+User=$USER
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+log "Creating systemd service: archivist (Obsidian + Notion backup)…"
+sudo tee /etc/systemd/system/governance-archivist.service >/dev/null <<EOF
+[Unit]
+Description=Governance Archivist (Paperclip -> Obsidian + Notion backup)
+After=network.target paperclip.service
+
+[Service]
+WorkingDirectory=$APP_DIR
+EnvironmentFile=$APP_DIR/.env
+ExecStart=$APP_DIR/.venv/bin/python main.py --archivist
+Restart=always
+RestartSec=10
+User=$USER
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+log "Creating systemd service: Slack relay (talk to your CEO)…"
+sudo tee /etc/systemd/system/governance-slack.service >/dev/null <<EOF
+[Unit]
+Description=Governance Slack Relay (owner <-> CEO)
+After=network.target paperclip.service
+
+[Service]
+WorkingDirectory=$APP_DIR
+EnvironmentFile=$APP_DIR/.env
+ExecStart=$APP_DIR/.venv/bin/python main.py --slack-relay
+Restart=always
+RestartSec=10
 User=$USER
 
 [Install]
@@ -101,6 +150,8 @@ EOF
 log "Starting services…"
 sudo systemctl daemon-reload
 sudo systemctl enable --now governance-integrations.service
+sudo systemctl enable --now governance-archivist.service || true
+[ -n "$SLACK_BOT_TOKEN" ] && sudo systemctl enable --now governance-slack.service || true
 # First Paperclip start needs interactive onboarding; do it once, then enable the service:
 if [ ! -d "$HOME/.paperclip" ]; then
   log "First run: completing Paperclip onboarding (non-interactive)…"

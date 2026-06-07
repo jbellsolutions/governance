@@ -59,6 +59,48 @@ services:
       timeout: 10s
       retries: 3
 
+  # ── Archivist — back up every action/thought to Obsidian + Notion ─────────
+  archivist:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["python", "main.py", "--archivist"]
+    environment:
+      PAPERCLIP_API_URL: http://paperclip:3000
+      PAPERCLIP_API_KEY: ${PAPERCLIP_API_KEY:-}
+      OBSIDIAN_VAULT_PATH: /vault
+      NOTION_API_KEY: ${NOTION_API_KEY:-}
+      NOTION_PARENT_PAGE_ID: ${NOTION_PARENT_PAGE_ID:-}
+      INTEGRATIONS_URL: http://integrations:8080
+      STATE_DB_PATH: /data/governance.db
+    volumes:
+      - integrations_data:/data
+      - ${OBSIDIAN_VAULT_PATH:-./vault}:/vault
+    depends_on:
+      - paperclip
+    restart: unless-stopped
+
+  # ── Slack relay — talk to your CEO from Slack (optional) ──────────────────
+  slack:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["python", "main.py", "--slack-relay"]
+    environment:
+      PAPERCLIP_API_URL: http://paperclip:3000
+      PAPERCLIP_API_KEY: ${PAPERCLIP_API_KEY:-}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_OWNER_CHANNEL: ${SLACK_OWNER_CHANNEL:-#governance}
+      SLACK_RELAY_PORT: "3001"
+      STATE_DB_PATH: /data/governance.db
+    volumes:
+      - integrations_data:/data
+    ports:
+      - "3001:3001"
+    depends_on:
+      - paperclip
+    restart: unless-stopped
+
 volumes:
   paperclip_data:
   integrations_data:

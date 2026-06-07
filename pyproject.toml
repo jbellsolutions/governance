@@ -15,6 +15,7 @@ packages = [
     "governance.specialists",
     "governance.specialists.tools",
     "governance.integrations",
+    "governance.backup",
     "governance.paperclip",
     "governance.web",
 ]

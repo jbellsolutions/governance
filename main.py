@@ -97,6 +97,18 @@ def cmd_specialists(port: int = 8080):
     uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 
 
+def cmd_archivist():
+    """Run the Paperclip → Obsidian/Notion backup sync (long-lived)."""
+    from governance.backup.paperclip_sync import main as sync_main
+    sync_main()
+
+
+def cmd_slack_relay():
+    """Run the Slack <-> Paperclip relay (talk to your CEO from Slack)."""
+    from governance.integrations.slack_paperclip import main as relay_main
+    relay_main()
+
+
 def cmd_slack():
     """Start Slack bridge in foreground (for testing)."""
     import time
@@ -142,10 +154,20 @@ def cmd_status():
     except Exception:
         print("Agency Swarm: not installed")
 
+    # Backup sinks
+    from governance.backup import archivist
+    cfg = archivist.configured()
+    print("\nBackup sinks:")
+    print(f"  {'✓' if cfg['obsidian'] else '✗'} Obsidian (OBSIDIAN_VAULT_PATH)")
+    print(f"  {'✓' if cfg['notion_api'] or cfg['notion_via_sidecar'] else '✗'} Notion "
+          f"({'direct API' if cfg['notion_api'] else 'via sidecar' if cfg['notion_via_sidecar'] else 'unconfigured'})")
+
 
 def main():
     parser = argparse.ArgumentParser(description="Governance — Paperclip-native Integrations sidecar + tooling")
     parser.add_argument("--specialists",  action="store_true",  help="Start the Integrations sidecar (:8080)")
+    parser.add_argument("--archivist",    action="store_true",  help="Backup sync: Paperclip → Obsidian + Notion")
+    parser.add_argument("--slack-relay",  dest="slack_relay", action="store_true", help="Slack <-> Paperclip relay (talk to your CEO)")
     parser.add_argument("--slack",        action="store_true",  help="Start Slack bridge only (:3001)")
     parser.add_argument("--status",       action="store_true",  help="System health check")
     parser.add_argument("--panel",        action="store_true",  help="Legacy standalone panel (:8000) — optional")
@@ -154,10 +176,12 @@ def main():
 
     args = parser.parse_args()
 
-    if not any([args.panel, args.serve, args.specialists, args.slack, args.status]):
+    if not any([args.panel, args.serve, args.specialists, args.archivist, args.slack_relay, args.slack, args.status]):
         parser.print_help()
         print("\nQuick start:")
         print("  python main.py --specialists                   # Integrations sidecar — the agents' tools (:8080)")
+        print("  python main.py --archivist                     # back up every action to Obsidian + Notion")
+        print("  python main.py --slack-relay                   # talk to your CEO from Slack")
         print("  python main.py --status                        # health check")
         print("\nThe panel, companies, agents, and budgets live in Paperclip:")
         print("  npx -y paperclipai@latest onboard --yes        # start the Paperclip board")
@@ -168,6 +192,10 @@ def main():
         cmd_status()
     elif args.specialists:
         cmd_specialists(args.port or 8080)
+    elif args.archivist:
+        cmd_archivist()
+    elif args.slack_relay:
+        cmd_slack_relay()
     elif args.slack:
         cmd_slack()
     elif args.panel:

@@ -2,18 +2,26 @@
 
 Run real, autonomous businesses on a VPS where **you talk to one agent (the CEO)** and a team of
 AI agents handles lead generation and fulfillment. You take the sales calls; the system does the
-rest. Run **many separate businesses in one panel**, each fully isolated.
+rest. Run **many separate businesses in one panel**, each fully isolated. **Plug-and-play:** hand
+this repo to an AI agent and it builds the whole thing out for you — see **[BUILD.md](BUILD.md)**.
 
 This repo is **not** a custom dashboard. The dashboard, budgets, org chart, multi-business
 isolation, approvals, and audit trail are all provided by **[Paperclip](https://github.com/paperclipai/paperclip)** —
-a mature (69k★, MIT) open-source control plane for managing AI agents. This repo provides the two
-things Paperclip doesn't ship out of the box:
+a mature (69k★, MIT) open-source control plane for managing AI agents. This repo adds:
 
 1. **A ready-to-run business** — a Paperclip *company package* (`paperclip/companies/lead-gen-agency/`)
-   defining a CEO, a Growth team, a Delivery team, their skills, and the recurring schedules that
-   make it run every day without you.
-2. **An Integrations sidecar** — a small service that gives those agents real tools (lead sourcing,
-   email outreach, calendar booking, CRM) via [Composio](https://composio.dev).
+   with a CEO, an Onboarding Concierge that walks you through setup, a Growth team, a Delivery team,
+   their skills, and the recurring schedules that make it run every day without you.
+2. **An Integrations sidecar** — gives the agents real tools (lead sourcing, email outreach, calendar
+   booking, CRM, Notion, Slack) via [Composio](https://composio.dev).
+3. **Backups** — every agent action and thought mirrored to **Obsidian** (markdown vault) and **Notion**.
+4. **Slack** — talk to your CEO and team from Slack (`/ceo <message>`).
+
+### Drop-the-link setup
+
+Give the repo URL to an AI coding agent (Claude Code, Codex, Cursor) and say *"follow BUILD.md."*
+It installs, starts Paperclip, imports the business, wires backups + Slack, and deploys — pausing
+only where it needs a key or a decision from you. **[BUILD.md](BUILD.md)** is written for the agent.
 
 ---
 
@@ -153,22 +161,70 @@ before import):
 
 ---
 
-## VPS deployment
+## Guided onboarding
+
+Each business ships with an **Onboarding Concierge** agent and a **Welcome & Setup** task. The moment
+you create the company, that task appears as `todo`; on its first heartbeat the Concierge interviews
+you (offer, ICP, trigger, daily lead target, booking calendar, deliverable, quality bar) with a
+structured board/Slack interaction, then writes your answers into the Growth Engine and Client
+Delivery projects and lists which secrets/Composio apps to connect. When it marks the task `done`,
+the business is configured and its daily routines run on their own.
+
+## Backups — Obsidian + Notion
+
+Every agent action and thought is mirrored to durable backups so nothing is ever lost:
 
 ```bash
-# On a fresh Ubuntu 22.04+ VPS:
+python main.py --archivist        # polls Paperclip and mirrors all activity
+```
+
+- **Obsidian** — set `OBSIDIAN_VAULT_PATH`; one markdown file per event, foldered by business/date,
+  with frontmatter + tags (browsable in Obsidian's graph, git-friendly).
+- **Notion** — set `NOTION_API_KEY` + `NOTION_PARENT_PAGE_ID` (direct), or connect Notion in Composio
+  and the archivist routes through the sidecar.
+- A local SQLite log is always written as the source-of-truth backstop, even with no sink configured.
+
+The OpenRouter worker also archives its own reasoning/actions per heartbeat, and keeps a **per-issue
+session** (`WORKER_SESSION_TURNS`) so an agent resumes full context every time it's woken.
+
+## Slack — talk to your CEO
+
+```bash
+python main.py --slack-relay      # /ceo <message> in Slack → wakes the CEO; replies come back to Slack
+```
+
+One channel per business; bidirectional. Full Slack app setup: **[docs/SLACK.md](docs/SLACK.md)**.
+
+## VPS deployment (DigitalOcean recommended)
+
+**Why a droplet, not Railway:** Paperclip wants a persistent host — embedded Postgres, a filesystem
+(for the Obsidian vault + local adapters), and long-running heartbeat processes. A **DigitalOcean
+droplet** (or any Ubuntu VPS) fits that directly; Railway's stateless-container model fights it
+(ephemeral filesystem, harder persistent Postgres + long-lived workers). Use a 2 vCPU / 4 GB droplet.
+
+```bash
+# Create a droplet (or use the DO console), then on the droplet:
 export DOMAIN=board.youragency.com
 export OPENROUTER_API_KEY=sk-or-...
 export COMPOSIO_API_KEY=...
+export SLACK_BOT_TOKEN=xoxb-...           # optional
+export NOTION_API_KEY=...                  # optional
 curl -fsSL https://raw.githubusercontent.com/jbellsolutions/governance/main/scripts/deploy-vps.sh | bash
 ```
 
-The script installs Node 20 + Python, clones the repo, creates two systemd services
-(`paperclip` on :3000, `governance-integrations` on :8080), and — if `DOMAIN` is set — configures
-nginx + TLS with SSE-friendly proxy settings. Then claim the instance
-(`npx paperclipai auth bootstrap-ceo`) and import the business as above.
+The script installs Node 20 + Python, clones the repo, and creates systemd services for **Paperclip**
+(:3000), the **Integrations sidecar** (:8080), the **archivist**, and the **Slack relay** — plus
+nginx + TLS if `DOMAIN` is set. Then claim the instance (`npx paperclipai auth bootstrap-ceo`) and
+import the business.
 
-Docker alternative: `cd paperclip && docker compose up -d` (Paperclip + Integrations sidecar).
+Create the droplet from your machine with `doctl` (you run this — it needs your DO auth):
+
+```bash
+doctl compute droplet create governance --region nyc1 --size s-2vcpu-4gb \
+  --image ubuntu-22-04-x64 --ssh-keys <your-key-id> --wait
+```
+
+Docker alternative: `cd paperclip && docker compose up -d` (Paperclip + sidecar + archivist + Slack).
 
 ---
 
@@ -217,16 +273,26 @@ It removes the daily operational grind so you can focus on sales calls and strat
 ## Repo layout
 
 ```
+BUILD.md                       # agent-runnable setup guide (drop the link → it builds it)
 paperclip/
-  companies/lead-gen-agency/   # the importable business (company package)
-  docker-compose.yml           # Paperclip + Integrations sidecar
+  companies/lead-gen-agency/   # the importable business (8 agents, 5 skills, routines, onboarding)
+  docker-compose.yml           # Paperclip + sidecar + archivist + Slack relay
 specialists/                   # the Integrations sidecar (FastAPI + Composio / Agency Swarm)
   app.py
   tools/composio_tools.py
+backup/                        # archivist (Obsidian + Notion) + Paperclip sync
+  archivist.py
+  paperclip_sync.py
+integrations/
+  slack_paperclip.py           # Slack <-> Paperclip relay (owner <-> CEO)
+  slack_bridge.py
 core/                          # state_manager, budget_gate, audit_stream helpers
-paperclip_worker.py            # OpenRouter process-adapter worker (path B)
-scripts/deploy-vps.sh          # one-shot VPS provisioning
-main.py                        # CLI: --specialists, --status, --slack
+paperclip_worker.py            # OpenRouter process-adapter worker (session codec + archiving)
+scripts/
+  deploy-vps.sh                # one-shot VPS provisioning (systemd + nginx + TLS)
+  new-business.sh              # spin up another isolated business from the template
+docs/SLACK.md                  # Slack app setup
+main.py                        # CLI: --specialists, --archivist, --slack-relay, --status
 ```
 
 ### Removed: CrewAI

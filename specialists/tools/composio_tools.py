@@ -30,6 +30,7 @@ SPECIALIST_APPS = {
     "crm":      ["HUBSPOT"],
     "research": [],  # uses built-in web search, no Composio needed
     "code":     ["GITHUB"],
+    "notion":   ["NOTION"],
 }
 
 SPECIALIST_ACTIONS = {
@@ -38,6 +39,7 @@ SPECIALIST_ACTIONS = {
     "calendar": ["GOOGLECALENDAR_CREATE_EVENT", "GOOGLECALENDAR_LIST_EVENTS"],
     "crm":      ["HUBSPOT_CREATE_CONTACT", "HUBSPOT_LIST_CONTACTS"],
     "code":     ["GITHUB_CREATE_AN_ISSUE", "GITHUB_LIST_REPOS"],
+    "notion":   ["NOTION_CREATE_NOTION_PAGE", "NOTION_ADD_PAGE_CONTENT", "NOTION_SEARCH_NOTION_PAGE"],
 }
 
 
