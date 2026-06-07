@@ -1,77 +1,41 @@
 version: "3.9"
 
-# Full governance stack:
-#   Paperclip dashboard      → localhost:3000
-#   Governance control plane → localhost:8000
-#   OpenSwarm specialists    → localhost:8080
-#   Slack bridge             → localhost:3001
+# Paperclip-native governance stack.
+#
+#   Paperclip board (the panel)  → :3000   — companies, agents, budgets, dashboard, audit
+#   Integrations sidecar         → :8080   — Composio-backed research / email / calendar / CRM
+#
+# Paperclip IS the panel and the multi-business control plane. Each business is a Paperclip
+# "company" (imported from a company package), fully isolated. The Integrations sidecar is the
+# only custom service: it gives the agents real lead-gen / outreach / CRM tools via Composio.
+#
+# The canonical Paperclip install is `npx paperclipai onboard` (see scripts/deploy-vps.sh for a
+# production systemd + nginx setup). This compose file runs Paperclip in a Node container for
+# convenience and the Integrations sidecar alongside it.
 
 services:
 
-  # ── Layer 1: Paperclip (financial controls + dashboard) ───────────────────
+  # ── Paperclip board — the panel / control plane ───────────────────────────
   paperclip:
-    image: node:20-alpine
+    image: node:20-bookworm-slim
     working_dir: /app
     volumes:
-      - paperclip_data:/app/.paperclip
+      - paperclip_data:/root/.paperclip
     environment:
-      PORT: "3000"
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      NODE_ENV: production
+      # Paperclip stores its own config; agents get model keys via company secrets in the UI.
+      PAPERCLIP_DEPLOYMENT_MODE: ${PAPERCLIP_DEPLOYMENT_MODE:-authenticated}
+      PAPERCLIP_PUBLIC_URL: ${PAPERCLIP_PUBLIC_URL:-http://localhost:3000}
     ports:
       - "3000:3000"
     command: >
       sh -c "
-        npm install -g pnpm &&
-        npx paperclipai@latest onboard --yes --port 3000
+        apt-get update && apt-get install -y python3 make g++ curl >/dev/null 2>&1;
+        npx -y paperclipai@latest onboard --yes --bind lan;
       "
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
 
-  # ── Layer 2+3: Governance control plane (CrewAI orchestration) ────────────
-  governance:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    environment:
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
-      OPENAI_API_KEY: ${OPENROUTER_API_KEY}
-      OPENAI_BASE_URL: https://openrouter.ai/api/v1
-      PAPERCLIP_URL: http://paperclip:3000
-      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
-      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
-      COMPOSIO_API_KEY: ${COMPOSIO_API_KEY:-}
-      STATE_DB_PATH: /data/governance.db
-      AUDIT_LOG_PATH: /data/audit.jsonl
-      EXPERT_MODEL: ${EXPERT_MODEL:-deepseek/deepseek-chat-v4}
-      MODERATOR_MODEL: ${MODERATOR_MODEL:-anthropic/claude-opus-4-8}
-      EXEC_MODEL: ${EXEC_MODEL:-anthropic/claude-sonnet-4-6}
-      SALES_MODEL: ${SALES_MODEL:-moonshotai/kimi-2}
-      MARKETING_MODEL: ${MARKETING_MODEL:-moonshotai/kimi-2}
-      COMPOSIO_MAX_CONCURRENT: ${COMPOSIO_MAX_CONCURRENT:-10}
-      BUDGET_OVERRIDE: ${BUDGET_OVERRIDE:-false}
-    volumes:
-      - governance_data:/data
-    ports:
-      - "8000:8000"
-      - "3001:3001"
-    depends_on:
-      paperclip:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # ── OpenSwarm specialist layer (separate process for isolation) ───────────
-  specialists:
+  # ── Integrations sidecar — the agents' real tools (Composio) ──────────────
+  integrations:
     build:
       context: ..
       dockerfile: Dockerfile
@@ -80,17 +44,14 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       OPENAI_API_KEY: ${OPENROUTER_API_KEY}
       OPENAI_BASE_URL: https://openrouter.ai/api/v1
-      PAPERCLIP_URL: http://paperclip:3000
       COMPOSIO_API_KEY: ${COMPOSIO_API_KEY:-}
-      STATE_DB_PATH: /data/governance.db
-      SPECIALIST_MODEL: ${EXPERT_MODEL:-deepseek/deepseek-chat-v4}
       COMPOSIO_MAX_CONCURRENT: ${COMPOSIO_MAX_CONCURRENT:-10}
+      SPECIALIST_MODEL: ${SPECIALIST_MODEL:-deepseek/deepseek-chat-v4}
+      STATE_DB_PATH: /data/governance.db
     volumes:
-      - governance_data:/data
+      - integrations_data:/data
     ports:
       - "8080:8080"
-    depends_on:
-      - paperclip
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -100,4 +61,4 @@ services:
 
 volumes:
   paperclip_data:
-  governance_data:
+  integrations_data:

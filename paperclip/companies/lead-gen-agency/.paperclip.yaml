@@ -1,0 +1,21 @@
+# Paperclip vendor extension (optional).
+# This file is advisory: it documents the recommended adapter + secret wiring for
+# this company package. Configure the real values in the Paperclip board after import
+# (Agent settings → Adapter), or via `paperclipai` CLI.
+#
+# Recommended adapter per agent: claude_local (Claude Code) — the golden path.
+#   Each agent uses the built-in `claude_local` adapter. Paperclip injects the
+#   PAPERCLIP_* env vars and the `paperclip` skill automatically.
+#
+# Alternative: OpenRouter via the `process` adapter.
+#   command: python
+#   args: ["-m", "governance.paperclip_worker"]
+#   env:  { OPENROUTER_API_KEY: "...", EXEC_MODEL: "anthropic/claude-sonnet-4-6" }
+#   (see governance/paperclip_worker.py and the repo README for details)
+#
+# Secrets this company expects (set as Paperclip company secrets):
+#   - INTEGRATIONS_URL    URL of the Integrations sidecar (default http://localhost:8080)
+#   - COMPOSIO_API_KEY    for Composio-backed email / calendar / CRM / research
+#   - OPENROUTER_API_KEY  only if using the process-adapter / OpenRouter path
+
+version: 1
