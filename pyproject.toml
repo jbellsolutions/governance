@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=67", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "governance"
+version = "0.1.0"
+description = "Autonomous Agent Governance System"
+requires-python = ">=3.10"
+
+[tool.setuptools]
+packages = [
+    "governance",
+    "governance.core",
+    "governance.crews",
+    "governance.council",
+    "governance.council.agents",
+    "governance.council.tools",
+    "governance.specialists",
+    "governance.specialists.tools",
+    "governance.integrations",
+    "governance.business_templates",
+    "governance.paperclip",
+]
+package-dir = {"governance" = "."}
