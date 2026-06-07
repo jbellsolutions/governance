@@ -95,16 +95,12 @@ def get_specialist_tools(specialist_type: str, tenant_id: str = "default") -> li
 
 
 def _get_research_tools() -> list:
-    """Research tools — web search without Composio dependency."""
-    try:
-        from crewai_tools import SerperDevTool, WebsiteSearchTool
-        tools = []
-        if os.environ.get("SERPER_API_KEY"):
-            tools.append(SerperDevTool())
-        tools.append(WebsiteSearchTool())
-        return tools
-    except ImportError:
-        return []
+    """
+    Research tools. Prefer Composio's connected search app (configured via
+    SPECIALIST_APPS for the 'research' type). Returns [] if none is connected —
+    the research specialist then relies on the model's own knowledge.
+    """
+    return []
 
 
 def connect_app(app_name: str) -> None:

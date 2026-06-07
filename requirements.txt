@@ -1,8 +1,5 @@
-# ── Core orchestration ───────────────────────────────────────────────────────
-crewai>=1.14.6
-crewai-tools>=1.14.6
-
-# ── Specialist agent layer (Agency Swarm / OpenSwarm) ────────────────────────
+# ── Integrations sidecar — specialist agent layer (Agency Swarm / OpenSwarm) ──
+# Paperclip is the orchestration plane; this repo only needs the sidecar stack.
 agency-swarm>=0.5.1
 
 # ── API server ───────────────────────────────────────────────────────────────

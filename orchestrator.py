@@ -222,52 +222,25 @@ class CEOOrchestrator:
             level="info",
         )
 
-        biz_id = self.business_id
-        biz_name = self.business_name
-        tenant_id = self.tenant_id
-
-        def _run():
-            try:
-                if team_type == "exec_team":
-                    from governance.crews.executive_crew import create_executive_crew
-                    crew = create_executive_crew(biz_name, tenant_id)
-                elif team_type == "sales":
-                    from governance.crews.sales_crew import create_sales_crew
-                    crew = create_sales_crew(biz_name, tenant_id)
-                else:
-                    from governance.crews.marketing_crew import create_marketing_crew
-                    crew = create_marketing_crew(biz_name, tenant_id)
-
-                crew.business_id = biz_id
-                result = crew.kickoff(inputs={"objective": objective})
-
-                preview = str(result)[:300] if result else "(no output)"
-                state_manager.save_entity(tenant_id, biz_id, f"team_{team_type}_last", {
-                    "objective": objective,
-                    "result_preview": preview,
-                })
-                publish(
-                    "team_complete",
-                    biz_id,
-                    team_id=team_type,
-                    agent_name=team_type.upper(),
-                    message=f"Done. {preview}",
-                    level="success",
-                )
-            except Exception as exc:
-                publish(
-                    "team_error",
-                    biz_id,
-                    team_id=team_type,
-                    agent_name=team_type.upper(),
-                    message=f"Team failed: {exc}",
-                    level="error",
-                )
-
-        threading.Thread(target=_run, daemon=True).start()
+        # Team execution now lives in Paperclip (heartbeat agents + routines), not in
+        # an in-process CrewAI crew. This legacy standalone panel can record the
+        # delegation intent and chat, but the teams actually run inside Paperclip.
+        state_manager.save_entity(self.tenant_id, self.business_id, f"team_{team_type}_last", {
+            "objective": objective,
+            "note": "Delegated. Teams run in Paperclip — see the Paperclip board.",
+        })
+        publish(
+            "team_complete",
+            self.business_id,
+            team_id=team_type,
+            agent_name=team_type.upper(),
+            message="Delegation recorded. Teams run in Paperclip (board).",
+            level="info",
+        )
         return (
-            f"✓ {team_type} team started. Watch them work live in the panel. "
-            f"Objective: '{objective[:100]}'"
+            f"Recorded a delegation to {team_type}: '{objective[:100]}'. "
+            "In the Paperclip-native setup, the team runs as heartbeat agents in the "
+            "Paperclip board — open it to watch them work."
         )
 
     def _get_status(self) -> dict:

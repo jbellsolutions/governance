@@ -220,23 +220,33 @@ It removes the daily operational grind so you can focus on sales calls and strat
 paperclip/
   companies/lead-gen-agency/   # the importable business (company package)
   docker-compose.yml           # Paperclip + Integrations sidecar
-specialists/                   # the Integrations sidecar (FastAPI + Composio)
+specialists/                   # the Integrations sidecar (FastAPI + Composio / Agency Swarm)
   app.py
   tools/composio_tools.py
+core/                          # state_manager, budget_gate, audit_stream helpers
 paperclip_worker.py            # OpenRouter process-adapter worker (path B)
-crews/, council/, core/        # earlier CrewAI/council work (optional; see Legacy below)
 scripts/deploy-vps.sh          # one-shot VPS provisioning
-main.py                        # CLI: --specialists, --status, --council, …
+main.py                        # CLI: --specialists, --status, --slack
 ```
 
-### Legacy components
+### Removed: CrewAI
 
-Earlier in development this repo also built a standalone custom panel (`panel.py`, `web/`,
-`orchestrator.py`, `business_registry.py`, `event_bus.py`) and a CrewAI crew layer. These work, but
-they **duplicate what Paperclip provides natively** and are not the recommended path now that the
-system is Paperclip-native. They remain in the repo as a reference / offline fallback. The 5-round
-expert council (`council/`) that produced the original architecture also remains and is runnable via
-`python main.py --council`.
+CrewAI has been removed. Paperclip natively provides what CrewAI did — **orchestration, state,
+long-running workflows, and agent communication** — so running a CrewAI layer on top was redundant:
+
+| Concern | Now handled by Paperclip |
+|---|---|
+| **State control** | Durable Postgres store + per-task **session persistence** (agents resume context across heartbeats); issue documents with revisions |
+| **Long-running workflows** | Issues that progress across many heartbeats (survive restarts), **routines** (cron), **child issues + blockers** with auto-wake on resolve, multi-stage execution policies with approval gates |
+| **Agent communication** | **Issue/ticket threads**, `@`-mention wakes, child-issue delegation, chain-of-command escalation, structured issue-thread interactions |
+
+The OpenSwarm/Agency Swarm **Integrations sidecar** remains — it's the agents' tool layer.
+
+### Legacy (optional, not recommended): standalone panel
+
+A standalone custom panel (`panel.py`, `web/`, `orchestrator.py`, `business_registry.py`,
+`event_bus.py`) remains for offline experimentation, but it **duplicates Paperclip** and team
+execution now lives in Paperclip. Use the Paperclip board instead.
 
 ---
 
