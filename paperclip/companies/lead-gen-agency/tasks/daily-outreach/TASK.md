@@ -6,7 +6,7 @@ schedule:
   timezone: America/Chicago
   startsAt: 2026-06-08T09:30:00-05:00
   recurrence:
-    frequency: daily
+    frequency: weekly
     interval: 1
     weekdays:
       - monday
