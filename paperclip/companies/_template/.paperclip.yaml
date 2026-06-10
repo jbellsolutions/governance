@@ -1,0 +1,10 @@
+# Paperclip vendor extension (advisory).
+# Generic team template. After import, set each agent's adapter to opencode_local with an
+# OPENROUTER_API_KEY in its env (the Architect does this automatically; the model default is
+# openrouter/anthropic/claude-sonnet-4.5).
+#
+# Secrets this company expects:
+#   - OPENROUTER_API_KEY   model access for every agent
+#   - (add your own as the team's skills require, e.g. COMPOSIO_API_KEY, INTEGRATIONS_URL)
+
+version: 1

@@ -1,0 +1,22 @@
+# Paperclip vendor extension (advisory).
+# Governance HQ runs one agent — the Architect — on the opencode_local adapter so it can both
+# reason (via OpenRouter) and administer the host (bash tool) and the Paperclip API.
+#
+# Recommended adapter for the Architect: opencode_local
+#   adapterConfig:
+#     cwd: /home/paperclip
+#     model: openrouter/anthropic/claude-sonnet-4.5
+#     env:
+#       OPENROUTER_API_KEY: "<set in board / via API — do NOT commit>"
+#       PAPERCLIP_API_KEY:  "<board key with company-management permission>"
+#       PAPERCLIP_API_URL:  "https://<your-board-host>"
+#
+# The board key is what gives the Architect cross-company provisioning power (an agent's own
+# JWT is scoped to its own company). Treat this host as trusted. Rotate keys after setup.
+#
+# Secrets this company expects (set as Paperclip company secrets or in the Architect's adapter env):
+#   - OPENROUTER_API_KEY   model access for the Architect and every team it builds
+#   - PAPERCLIP_API_KEY    board key — create/modify companies, agents, projects, imports
+#   - PAPERCLIP_API_URL    base URL of this Paperclip board
+
+version: 1
