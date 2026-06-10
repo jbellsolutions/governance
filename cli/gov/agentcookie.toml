@@ -1,0 +1,16 @@
+# agentcookie.toml: secrets-bus adoption manifest v2
+# See docs/spec-agentcookie-secrets-bus-v2-adoption.md
+schema_version = 2
+name = "gov-pp-cli"
+display_name = "Paperclip Governance"
+description = "The verified subset of the Paperclip board API used to spin up and manage teams of AI agents — whole businesses"
+project_kind = "cli"
+
+[secrets.file]
+path = "~/.config/gov-pp-cli/config.toml"
+
+[sync]
+default = false
+
+[sync.keys]
+GOV_BOARD_KEY = true

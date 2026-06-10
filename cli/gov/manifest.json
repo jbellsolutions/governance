@@ -1,0 +1,39 @@
+{
+  "manifest_version": "0.3",
+  "name": "gov-pp-mcp",
+  "display_name": "Paperclip Governance",
+  "version": "0.0.0",
+  "description": "The verified subset of the Paperclip board API used to spin up and manage teams of AI agents — whole businesses",
+  "author": {
+    "name": "CLI Printing Press"
+  },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "bin/gov-pp-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/bin/gov-pp-mcp",
+      "args": [],
+      "env": {
+        "GOV_BOARD_KEY": "${user_config.gov_board_key}"
+      }
+    }
+  },
+  "user_config": {
+    "gov_board_key": {
+      "type": "string",
+      "title": "GOV_BOARD_KEY",
+      "description": "Sets GOV_BOARD_KEY for the Paperclip Governance MCP server.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ]
+  }
+}

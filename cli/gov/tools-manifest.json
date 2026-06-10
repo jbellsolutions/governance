@@ -1,0 +1,621 @@
+{
+  "api_name": "gov",
+  "base_url": "https://137-184-151-136.sslip.io",
+  "description": "The verified subset of the Paperclip board API used to spin up and manage teams of AI agents — whole businesses (companies) or departments (agents inside a company). Hand-authored from a live board (Paperclip 2026.529.0); Paperclip does not expose its own OpenAPI document.\nPath rule: collection ops (create/list) are nested under /api/companies/{companyId}/...; single-item ops (get/update/delete) are top-level /api/{resource}/{id}.",
+  "mcp_ready": "full",
+  "http_transport": "standard",
+  "auth": {
+    "type": "bearer_token",
+    "header": "Authorization",
+    "env_vars": [
+      "GOV_BOARD_KEY"
+    ],
+    "env_var_specs": [
+      {
+        "name": "GOV_BOARD_KEY",
+        "kind": "per_call",
+        "required": true,
+        "sensitive": true,
+        "inferred": true
+      }
+    ]
+  },
+  "required_headers": [],
+  "tools": [
+    {
+      "name": "agents_delete",
+      "description": "Delete an agent (managers with reports may 500 — set status=terminated instead). Required: agentId. Destructive.",
+      "method": "DELETE",
+      "path": "/api/agents/{agentId}",
+      "params": [
+        {
+          "name": "agentId",
+          "type": "string",
+          "location": "path",
+          "description": "Agent id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "agents_get",
+      "description": "Read an agent (incl. stats). Required: agentId.",
+      "method": "GET",
+      "path": "/api/agents/{agentId}",
+      "params": [
+        {
+          "name": "agentId",
+          "type": "string",
+          "location": "path",
+          "description": "Agent id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "agents_update",
+      "description": "Update an agent (status, budget, adapter, reporting line). Required: agentId. Optional: adapterConfig, adapterType, budgetMonthlyCents (plus 3 more). Partial update.",
+      "method": "PATCH",
+      "path": "/api/agents/{agentId}",
+      "params": [
+        {
+          "name": "agentId",
+          "type": "string",
+          "location": "path",
+          "description": "Agent id",
+          "required": true
+        },
+        {
+          "name": "adapter-config-cwd",
+          "wire_name": "adapterConfig.cwd",
+          "type": "string",
+          "location": "body",
+          "description": "Cwd"
+        },
+        {
+          "name": "adapter-config-env",
+          "wire_name": "adapterConfig.env",
+          "type": "object",
+          "location": "body",
+          "description": "Env"
+        },
+        {
+          "name": "adapter-config-model",
+          "wire_name": "adapterConfig.model",
+          "type": "string",
+          "location": "body",
+          "description": "Model"
+        },
+        {
+          "name": "adapterType",
+          "type": "string",
+          "location": "body",
+          "description": "Adapter type"
+        },
+        {
+          "name": "budgetMonthlyCents",
+          "type": "int",
+          "location": "body",
+          "description": "Budget monthly cents"
+        },
+        {
+          "name": "reportsTo",
+          "type": "string",
+          "location": "body",
+          "description": "Reports to"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "location": "body",
+          "description": "Status"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "location": "body",
+          "description": "Title"
+        }
+      ]
+    },
+    {
+      "name": "companies_create-company",
+      "description": "Create a company (a new business). Required: name. Optional: description, metadata.",
+      "method": "POST",
+      "path": "/api/companies",
+      "params": [
+        {
+          "name": "description",
+          "type": "string",
+          "location": "body",
+          "description": "Description"
+        },
+        {
+          "name": "metadata",
+          "type": "object",
+          "location": "body",
+          "description": "Metadata"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Name",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "companies_get-company",
+      "description": "Read a company (incl. budget/spend). Required: companyId.",
+      "method": "GET",
+      "path": "/api/companies/{companyId}",
+      "params": [
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "path",
+          "description": "Company id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "companies_list",
+      "description": "List all companies.",
+      "method": "GET",
+      "path": "/api/companies",
+      "params": []
+    },
+    {
+      "name": "companies_update-company",
+      "description": "Update a company (rename, budget, archive). Required: companyId. Optional: budgetMonthlyCents, description, name (plus 1 more). Partial update.",
+      "method": "PATCH",
+      "path": "/api/companies/{companyId}",
+      "params": [
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "path",
+          "description": "Company id",
+          "required": true
+        },
+        {
+          "name": "budgetMonthlyCents",
+          "type": "int",
+          "location": "body",
+          "description": "Budget monthly cents"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "location": "body",
+          "description": "Description"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Name"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "location": "body",
+          "description": "Status"
+        }
+      ]
+    },
+    {
+      "name": "companies_agents_create",
+      "description": "Create an agent (team member). Required: companyId, adapterType (default: opencode_local), name. Optional: adapterConfig, budgetMonthlyCents (default: 0), reportsTo (plus 2 more).",
+      "method": "POST",
+      "path": "/api/companies/{companyId}/agents",
+      "params": [
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "path",
+          "description": "Company id",
+          "required": true
+        },
+        {
+          "name": "adapter-config-cwd",
+          "wire_name": "adapterConfig.cwd",
+          "type": "string",
+          "location": "body",
+          "description": "Cwd"
+        },
+        {
+          "name": "adapter-config-env",
+          "wire_name": "adapterConfig.env",
+          "type": "object",
+          "location": "body",
+          "description": "Env"
+        },
+        {
+          "name": "adapter-config-model",
+          "wire_name": "adapterConfig.model",
+          "type": "string",
+          "location": "body",
+          "description": "Model"
+        },
+        {
+          "name": "adapterType",
+          "type": "string",
+          "location": "body",
+          "description": "Adapter type",
+          "required": true
+        },
+        {
+          "name": "budgetMonthlyCents",
+          "type": "int",
+          "location": "body",
+          "description": "Budget monthly cents"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Name",
+          "required": true
+        },
+        {
+          "name": "reportsTo",
+          "type": "string",
+          "location": "body",
+          "description": "Reports to"
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "location": "body",
+          "description": "Role"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "location": "body",
+          "description": "Title"
+        }
+      ]
+    },
+    {
+      "name": "companies_agents_list",
+      "description": "List a company's agents. Required: companyId.",
+      "method": "GET",
+      "path": "/api/companies/{companyId}/agents",
+      "params": [
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "path",
+          "description": "Company id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "companies_imports_apply",
+      "description": "Import a team/business package (github subdir tree URL, or inline files) as a new or existing company. Required: companyId, source, target. Optional: adapterOverrides, collisionStrategy, include.",
+      "method": "POST",
+      "path": "/api/companies/{companyId}/imports/apply",
+      "params": [
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "path",
+          "description": "Company id",
+          "required": true
+        },
+        {
+          "name": "adapterOverrides",
+          "type": "object",
+          "location": "body",
+          "description": "Keyed by agent slug. Safe imports reject the 'process' adapter — force opencode_local here (requires adapterConfig.model)."
+        },
+        {
+          "name": "collisionStrategy",
+          "type": "string",
+          "location": "body",
+          "description": "'replace' is NOT allowed on safe (board-key) imports"
+        },
+        {
+          "name": "include-agents",
+          "wire_name": "include.agents",
+          "type": "bool",
+          "location": "body",
+          "description": "Agents"
+        },
+        {
+          "name": "include-company",
+          "wire_name": "include.company",
+          "type": "bool",
+          "location": "body",
+          "description": "Company"
+        },
+        {
+          "name": "include-issues",
+          "wire_name": "include.issues",
+          "type": "bool",
+          "location": "body",
+          "description": "Issues"
+        },
+        {
+          "name": "include-projects",
+          "wire_name": "include.projects",
+          "type": "bool",
+          "location": "body",
+          "description": "Projects"
+        },
+        {
+          "name": "include-skills",
+          "wire_name": "include.skills",
+          "type": "bool",
+          "location": "body",
+          "description": "Skills"
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "location": "body",
+          "description": "Source",
+          "required": true
+        },
+        {
+          "name": "target",
+          "type": "string",
+          "location": "body",
+          "description": "Target",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "companies_issues_create",
+      "description": "Create an issue. Required: companyId, title. Optional: assigneeAgentId, description, priority (plus 1 more).",
+      "method": "POST",
+      "path": "/api/companies/{companyId}/issues",
+      "params": [
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "path",
+          "description": "Company id",
+          "required": true
+        },
+        {
+          "name": "assigneeAgentId",
+          "type": "string",
+          "location": "body",
+          "description": "Assignee agent id"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "location": "body",
+          "description": "Description"
+        },
+        {
+          "name": "priority",
+          "type": "string",
+          "location": "body",
+          "description": "Priority"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "location": "body",
+          "description": "Status"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "location": "body",
+          "description": "Title",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "companies_issues_list",
+      "description": "List issues. Required: companyId.",
+      "method": "GET",
+      "path": "/api/companies/{companyId}/issues",
+      "params": [
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "path",
+          "description": "Company id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "companies_projects_create",
+      "description": "Create a project. Required: companyId.",
+      "method": "POST",
+      "path": "/api/companies/{companyId}/projects",
+      "params": [
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "path",
+          "description": "Company id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "companies_projects_list",
+      "description": "List projects. Required: companyId.",
+      "method": "GET",
+      "path": "/api/companies/{companyId}/projects",
+      "params": [
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "path",
+          "description": "Company id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "companies_routines_create",
+      "description": "Create a routine (cron-scheduled task that wakes an agent — what makes a team run on its own). Required: companyId, title. Optional: assigneeAgentId, description, priority (default: medium) (plus 3 more).",
+      "method": "POST",
+      "path": "/api/companies/{companyId}/routines",
+      "params": [
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "path",
+          "description": "Company id",
+          "required": true
+        },
+        {
+          "name": "assigneeAgentId",
+          "type": "string",
+          "location": "body",
+          "description": "Assignee agent id"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "location": "body",
+          "description": "Description"
+        },
+        {
+          "name": "priority",
+          "type": "string",
+          "location": "body",
+          "description": "Priority"
+        },
+        {
+          "name": "projectId",
+          "type": "string",
+          "location": "body",
+          "description": "Project id"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "location": "body",
+          "description": "Status"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "location": "body",
+          "description": "Title",
+          "required": true
+        },
+        {
+          "name": "triggers",
+          "type": "array",
+          "location": "body",
+          "description": "Triggers"
+        }
+      ]
+    },
+    {
+      "name": "companies_routines_list",
+      "description": "List routines (each trigger's nextRunAt is the first fire). Required: companyId.",
+      "method": "GET",
+      "path": "/api/companies/{companyId}/routines",
+      "params": [
+        {
+          "name": "companyId",
+          "type": "string",
+          "location": "path",
+          "description": "Company id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "issues_get",
+      "description": "Read an issue. Required: issueId.",
+      "method": "GET",
+      "path": "/api/issues/{issueId}",
+      "params": [
+        {
+          "name": "issueId",
+          "type": "string",
+          "location": "path",
+          "description": "Issue id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "issues_update",
+      "description": "Update an issue (status. Required: issueId. Partial update.",
+      "method": "PATCH",
+      "path": "/api/issues/{issueId}",
+      "params": [
+        {
+          "name": "issueId",
+          "type": "string",
+          "location": "path",
+          "description": "Issue id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "issues_comments_add",
+      "description": "Add a comment (this is how you 'chat' with an assigned agent — it wakes on new comments). Required: issueId, body.",
+      "method": "POST",
+      "path": "/api/issues/{issueId}/comments",
+      "params": [
+        {
+          "name": "issueId",
+          "type": "string",
+          "location": "path",
+          "description": "Issue id",
+          "required": true
+        },
+        {
+          "name": "body",
+          "type": "string",
+          "location": "body",
+          "description": "Body",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "issues_comments_list",
+      "description": "List comments. Required: issueId.",
+      "method": "GET",
+      "path": "/api/issues/{issueId}/comments",
+      "params": [
+        {
+          "name": "issueId",
+          "type": "string",
+          "location": "path",
+          "description": "Issue id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "projects_update",
+      "description": "Update a project. Required: projectId. Partial update.",
+      "method": "PATCH",
+      "path": "/api/projects/{projectId}",
+      "params": [
+        {
+          "name": "projectId",
+          "type": "string",
+          "location": "path",
+          "description": "Project id",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

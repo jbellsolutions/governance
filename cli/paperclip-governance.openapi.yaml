@@ -1,0 +1,266 @@
+openapi: 3.0.3
+info:
+  title: Paperclip Governance API
+  version: "1.0.0"
+  description: >
+    The verified subset of the Paperclip board API used to spin up and manage teams of AI agents —
+    whole businesses (companies) or departments (agents inside a company). Hand-authored from a live
+    board (Paperclip 2026.529.0); Paperclip does not expose its own OpenAPI document.
+
+    Path rule: collection ops (create/list) are nested under /api/companies/{companyId}/...; single-item
+    ops (get/update/delete) are top-level /api/{resource}/{id}.
+servers:
+  - url: https://137-184-151-136.sslip.io
+    description: >
+      Board root (override the host via the CLI config base_url). All operation paths include /api.
+security:
+  - boardKey: []
+components:
+  securitySchemes:
+    boardKey:
+      type: http
+      scheme: bearer
+      description: A Paperclip board key (PAPERCLIP_API_KEY) with company-management permission.
+  schemas:
+    Company:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        status: { type: string, enum: [active, archived] }
+        budgetMonthlyCents: { type: integer }
+        spentMonthlyCents: { type: integer }
+        issuePrefix: { type: string }
+    CompanyCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        metadata: { type: object, additionalProperties: true }
+    CompanyUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        description: { type: string }
+        budgetMonthlyCents: { type: integer }
+        status: { type: string, enum: [active, archived] }
+    AdapterConfig:
+      type: object
+      properties:
+        cwd: { type: string, example: /home/paperclip }
+        model: { type: string, example: openrouter/anthropic/claude-sonnet-4.5 }
+        env:
+          type: object
+          additionalProperties: { type: string }
+          example: { OPENROUTER_API_KEY: "sk-or-..." }
+    Agent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        companyId: { type: string, format: uuid }
+        name: { type: string }
+        title: { type: string }
+        role:
+          type: string
+          enum: [ceo, cto, cmo, cfo, security, engineer, designer, pm, qa, devops, researcher, general]
+        reportsTo: { type: string, format: uuid, nullable: true }
+        adapterType: { type: string, enum: [opencode_local, claude_local, codex_local, process, http, mock] }
+        adapterConfig: { $ref: '#/components/schemas/AdapterConfig' }
+        status: { type: string, enum: [active, paused, idle, running, error, pending_approval, terminated] }
+        budgetMonthlyCents: { type: integer }
+        spentMonthlyCents: { type: integer }
+    AgentCreate:
+      type: object
+      required: [name, adapterType]
+      properties:
+        name: { type: string }
+        title: { type: string }
+        role: { type: string, default: general }
+        reportsTo: { type: string, format: uuid, nullable: true }
+        adapterType: { type: string, default: opencode_local }
+        adapterConfig: { $ref: '#/components/schemas/AdapterConfig' }
+        budgetMonthlyCents: { type: integer, default: 0 }
+    AgentUpdate:
+      type: object
+      properties:
+        title: { type: string }
+        reportsTo: { type: string, format: uuid, nullable: true }
+        adapterType: { type: string }
+        adapterConfig: { $ref: '#/components/schemas/AdapterConfig' }
+        status: { type: string, enum: [active, paused, idle, running, error, pending_approval, terminated] }
+        budgetMonthlyCents: { type: integer }
+    RoutineTrigger:
+      type: object
+      properties:
+        kind: { type: string, enum: [schedule] }
+        enabled: { type: boolean, default: true }
+        timezone: { type: string, example: America/Chicago }
+        cronExpression: { type: string, example: "0 9 * * 1" }
+    RoutineCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        assigneeAgentId: { type: string, format: uuid }
+        projectId: { type: string, format: uuid }
+        description: { type: string }
+        status: { type: string, default: active }
+        priority: { type: string, default: medium }
+        triggers:
+          type: array
+          items: { $ref: '#/components/schemas/RoutineTrigger' }
+    Import:
+      type: object
+      required: [source, target]
+      properties:
+        source:
+          oneOf:
+            - type: object
+              properties:
+                type: { type: string, enum: [github] }
+                url: { type: string, description: "Point at the subdirectory tree URL, e.g. https://github.com/owner/repo/tree/main/path/to/pkg" }
+            - type: object
+              properties:
+                type: { type: string, enum: [inline] }
+                rootPath: { type: string }
+                files:
+                  type: object
+                  additionalProperties:
+                    type: object
+                    properties: { content: { type: string } }
+        include:
+          type: object
+          properties:
+            company: { type: boolean }
+            agents: { type: boolean }
+            projects: { type: boolean }
+            issues: { type: boolean }
+            skills: { type: boolean }
+        target:
+          oneOf:
+            - type: object
+              properties:
+                mode: { type: string, enum: [new_company] }
+                newCompanyName: { type: string }
+            - type: object
+              properties:
+                mode: { type: string, enum: [existing_company] }
+                companyId: { type: string, format: uuid }
+        collisionStrategy: { type: string, enum: [rename, skip], description: "'replace' is NOT allowed on safe (board-key) imports" }
+        adapterOverrides:
+          type: object
+          description: "Keyed by agent slug. Safe imports reject the 'process' adapter — force opencode_local here (requires adapterConfig.model)."
+          additionalProperties:
+            type: object
+            properties:
+              adapterType: { type: string }
+              adapterConfig: { $ref: '#/components/schemas/AdapterConfig' }
+    IssueCreate:
+      type: object
+      required: [title]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        assigneeAgentId: { type: string, format: uuid }
+        status: { type: string, enum: [backlog, todo, in_progress, in_review, done, blocked, cancelled] }
+        priority: { type: string, enum: [low, medium, high] }
+    CommentCreate:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string }
+paths:
+  /api/companies:
+    get:
+      operationId: listCompanies
+      summary: List all companies
+      responses: { "200": { description: OK } }
+    post:
+      operationId: createCompany
+      summary: Create a company (a new business)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CompanyCreate' } } } }
+      responses: { "200": { description: Created } }
+  /api/companies/{companyId}:
+    parameters: [{ name: companyId, in: path, required: true, schema: { type: string } }]
+    get:
+      operationId: getCompany
+      summary: Read a company (incl. budget/spend)
+      responses: { "200": { description: OK } }
+    patch:
+      operationId: updateCompany
+      summary: Update a company (rename, budget, archive)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CompanyUpdate' } } } }
+      responses: { "200": { description: OK } }
+  /api/companies/{companyId}/agents:
+    parameters: [{ name: companyId, in: path, required: true, schema: { type: string } }]
+    get:
+      operationId: listAgents
+      summary: List a company's agents
+      responses: { "200": { description: OK } }
+    post:
+      operationId: createAgent
+      summary: Create an agent (team member)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AgentCreate' } } } }
+      responses: { "200": { description: Created } }
+  /api/agents/{agentId}:
+    parameters: [{ name: agentId, in: path, required: true, schema: { type: string } }]
+    get:
+      operationId: getAgent
+      summary: Read an agent (incl. stats)
+      responses: { "200": { description: OK } }
+    patch:
+      operationId: updateAgent
+      summary: Update an agent (status, budget, adapter, reporting line)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/AgentUpdate' } } } }
+      responses: { "200": { description: OK } }
+    delete:
+      operationId: deleteAgent
+      summary: Delete an agent (managers with reports may 500 — set status=terminated instead)
+      responses: { "200": { description: Deleted } }
+  /api/companies/{companyId}/projects:
+    parameters: [{ name: companyId, in: path, required: true, schema: { type: string } }]
+    get: { operationId: listProjects, summary: List projects, responses: { "200": { description: OK } } }
+    post: { operationId: createProject, summary: Create a project, responses: { "200": { description: Created } } }
+  /api/projects/{projectId}:
+    parameters: [{ name: projectId, in: path, required: true, schema: { type: string } }]
+    patch: { operationId: updateProject, summary: Update a project, responses: { "200": { description: OK } } }
+  /api/companies/{companyId}/routines:
+    parameters: [{ name: companyId, in: path, required: true, schema: { type: string } }]
+    get:
+      operationId: listRoutines
+      summary: List routines (each trigger's nextRunAt is the first fire)
+      responses: { "200": { description: OK } }
+    post:
+      operationId: createRoutine
+      summary: Create a routine (cron-scheduled task that wakes an agent — what makes a team run on its own)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/RoutineCreate' } } } }
+      responses: { "200": { description: Created } }
+  /api/companies/{companyId}/issues:
+    parameters: [{ name: companyId, in: path, required: true, schema: { type: string } }]
+    get: { operationId: listIssues, summary: List issues, responses: { "200": { description: OK } } }
+    post:
+      operationId: createIssue
+      summary: Create an issue
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/IssueCreate' } } } }
+      responses: { "200": { description: Created } }
+  /api/issues/{issueId}:
+    parameters: [{ name: issueId, in: path, required: true, schema: { type: string } }]
+    get: { operationId: getIssue, summary: Read an issue, responses: { "200": { description: OK } } }
+    patch: { operationId: updateIssue, summary: Update an issue (status, assignee), responses: { "200": { description: OK } } }
+  /api/issues/{issueId}/comments:
+    parameters: [{ name: issueId, in: path, required: true, schema: { type: string } }]
+    get: { operationId: listComments, summary: List comments, responses: { "200": { description: OK } } }
+    post:
+      operationId: addComment
+      summary: Add a comment (this is how you "chat" with an assigned agent — it wakes on new comments)
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/CommentCreate' } } } }
+      responses: { "200": { description: Created } }
+  /api/companies/{companyId}/imports/apply:
+    parameters: [{ name: companyId, in: path, required: true, schema: { type: string } }]
+    post:
+      operationId: applyImport
+      summary: Import a team/business package (github subdir tree URL, or inline files) as a new or existing company
+      requestBody: { required: true, content: { application/json: { schema: { $ref: '#/components/schemas/Import' } } } }
+      responses: { "200": { description: Imported } }
