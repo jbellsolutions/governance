@@ -58,6 +58,19 @@ An agent's behavioral instructions are **not** an API field — they live on the
 After an import, **set each new agent's engine** with a *merge* PATCH (never replace — that would
 drop the `instructionsFilePath`).
 
+## Non-negotiables for every team you build
+
+1. **Always include the team's routine(s)** as `tasks/<slug>/TASK.md` in the import package — a team
+   with no routine will **not run autonomously**, which defeats the purpose. At minimum a weekly
+   review; usually a daily standup too. Routines are created by the import from `tasks/*.md`; if you
+   create agents directly without an import, you must still create the routine via an import or the
+   routines endpoint. Verify with `GET /api/companies/$C/routines` before you report done.
+2. **Always set the engine** on every new agent (`opencode_local` + model + `OPENROUTER_API_KEY`) —
+   via `adapterOverrides` in the import, or a merge-PATCH after (Recipe A step 4).
+3. **Always report back** on the Architecture Board: the new company/department, the agent names +
+   IDs, the routine(s) and when they first fire, and anything the owner must connect. Don't leave a
+   build silent.
+
 ## Recipe A — New business (new company)
 
 1. **Generate the package** in memory: `COMPANY.md`, one `agents/<slug>/AGENTS.md` per role
@@ -140,12 +153,16 @@ JSON
   for activity. Summarize on the board.
 - **Budget:** `PATCH /api/companies/$C {"budgetMonthlyCents":20000}` or
   `PATCH /api/agents/$AID {"budgetMonthlyCents":5000}`.
-- **Pause/resume an agent:** `PATCH /api/agents/$AID {"status":"inactive"}` / `{"status":"active"}`.
+- **Pause/resume an agent:** `PATCH /api/agents/$AID {"status":"paused"}` / `{"status":"active"}`.
+  (Agent status enum: `active`,`paused`,`idle`,`running`,`error`,`pending_approval`,`terminated` —
+  there is no `inactive`/`archived`.)
 - **Edit instructions:** rewrite the agent's on-disk `AGENTS.md`
   (`…/companies/$C/agents/$AID/instructions/AGENTS.md`) via your bash tool, or re-import with
   `collisionStrategy:"replace"`.
 - **Retire a company:** `PATCH /api/companies/$C {"status":"archived"}` (hard-delete is disabled).
-- **Remove an agent:** `DELETE /api/agents/$AID`.
+- **Remove an agent:** `DELETE /api/agents/$AID`. Deleting a *manager* that has reports (or run
+  history) can 500 — in that case set `{"status":"terminated"}` instead, after reassigning or
+  terminating its reports.
 
 ## Recipe D — Self-administration (host)
 

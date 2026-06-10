@@ -4,9 +4,16 @@
 live, autonomous lead-gen + fulfillment business running on Paperclip.** Follow these steps in order.
 Each step is concrete and verifiable. Stop and ask the human only where a step says **[ASK HUMAN]**.
 
-> Goal end state: Paperclip running with the `lead-gen-agency` company imported, the Integrations
-> sidecar up, backups flowing to Obsidian/Notion, and (optionally) Slack chat to the CEO — on a VPS,
-> running every day without prompting.
+> Goal end state: Paperclip running with the **Governance HQ** company + **Architect** agent (your
+> standing point of contact) deployed, the Integrations sidecar up, backups flowing to
+> Obsidian/Notion, and (optionally) Slack chat — on a VPS, running every day without prompting. Once
+> the Architect is live, you (or the human) spin up businesses/departments by chatting with it on the
+> Architecture Board — no more scripts.
+
+> **Fast path for the Architect:** after Paperclip is running, set `PAPERCLIP_API_URL`,
+> `PAPERCLIP_API_KEY` (board key), and `OPENROUTER_API_KEY`, then run `scripts/deploy-architect.sh`.
+> It imports Governance HQ, configures the Architect on the `opencode_local` engine, and opens the
+> Architecture Board. See **[docs/ARCHITECT.md](docs/ARCHITECT.md)**.
 
 ---
 

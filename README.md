@@ -1,14 +1,23 @@
-# Governance — Autonomous Lead-Gen + Fulfillment Businesses on Paperclip
+# Governance — turn any idea into a team of agents, on Paperclip
 
-Run real, autonomous businesses on a VPS where **you talk to one agent (the CEO)** and a team of
-AI agents handles lead generation and fulfillment. You take the sales calls; the system does the
-rest. Run **many separate businesses in one panel**, each fully isolated. **Plug-and-play:** hand
-this repo to an AI agent and it builds the whole thing out for you — see **[BUILD.md](BUILD.md)**.
+A reusable **governance structure** for running autonomous orgs of AI agents. You talk to **one
+standing agent — the Architect** — inside the Paperclip dashboard, describe an idea, and it designs
+and provisions a **team of agents**: a whole new business, or a new department inside an existing
+company. Each business runs its own daily work without you. Run **many in one panel**, fully isolated.
+
+> **Start here:** the **Architect** is your permanent point of contact — see
+> **[docs/ARCHITECT.md](docs/ARCHITECT.md)**. It replaces the old "run a script to spin up a business"
+> flow: now you just chat with it in the board. The structure is a template
+> (`paperclip/companies/_template/`); **Lead-Gen Agency** (`paperclip/companies/lead-gen-agency/`) is a
+> worked-example preset. **Plug-and-play:** hand this repo to an AI agent and it builds the whole
+> thing out — see **[BUILD.md](BUILD.md)**.
 
 This repo is **not** a custom dashboard. The dashboard, budgets, org chart, multi-business
 isolation, approvals, and audit trail are all provided by **[Paperclip](https://github.com/paperclipai/paperclip)** —
 a mature (69k★, MIT) open-source control plane for managing AI agents. This repo adds:
 
+0. **The Architect + Governance HQ** (`paperclip/companies/governance-hq/`) — the meta-company and
+   standing agent that turns ideas into teams and manages every company over the API.
 1. **A ready-to-run business** — a Paperclip *company package* (`paperclip/companies/lead-gen-agency/`)
    with a CEO, an Onboarding Concierge that walks you through setup, a Growth team, a Delivery team,
    their skills, and the recurring schedules that make it run every day without you.
