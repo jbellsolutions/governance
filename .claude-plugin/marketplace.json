@@ -1,0 +1,14 @@
+{
+  "name": "governance",
+  "owner": {
+    "name": "jbellsolutions",
+    "url": "https://github.com/jbellsolutions/governance"
+  },
+  "plugins": [
+    {
+      "name": "governance",
+      "source": "./plugins/governance",
+      "description": "Spin up and manage teams of AI agents (businesses & departments) on a Paperclip board, from Claude Code or the CLI."
+    }
+  ]
+}

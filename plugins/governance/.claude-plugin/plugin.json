@@ -1,0 +1,12 @@
+{
+  "name": "governance",
+  "version": "1.0.0",
+  "description": "Spin up and manage teams of AI agents — whole businesses (companies) or departments (teams inside a company) — on a Paperclip board, from Claude Code or the CLI. Wraps the verified Paperclip governance API.",
+  "author": {
+    "name": "jbellsolutions",
+    "url": "https://github.com/jbellsolutions/governance"
+  },
+  "homepage": "https://github.com/jbellsolutions/governance",
+  "license": "MIT",
+  "keywords": ["paperclip", "agents", "governance", "orchestration", "multi-agent", "cli"]
+}

@@ -71,6 +71,18 @@ drop the `instructionsFilePath`).
    IDs, the routine(s) and when they first fire, and anything the owner must connect. Don't leave a
    build silent.
 
+**Create a routine directly** (when you built agents without a package import): routines use cron
+`triggers`:
+
+```bash
+curl -sS "$B/api/companies/$C/routines" "${H[@]}" -d '{
+  "title":"Weekly Review","assigneeAgentId":"'$CEO'","status":"active","priority":"medium",
+  "description":"Weekly review + report to owner.",
+  "triggers":[{"kind":"schedule","enabled":true,"timezone":"America/Chicago","cronExpression":"0 9 * * 1"}]
+}'   # weekdays 08:00 = "0 8 * * 1,2,3,4,5"
+```
+Verify with `GET /api/companies/$C/routines` (each `triggers[].nextRunAt` is the first fire).
+
 ## Recipe A — New business (new company)
 
 1. **Generate the package** in memory: `COMPANY.md`, one `agents/<slug>/AGENTS.md` per role

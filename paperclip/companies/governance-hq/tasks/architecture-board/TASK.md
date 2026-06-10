@@ -22,7 +22,9 @@ one — then report back here with links and when its routines start.
 
 ---
 
-**Architect:** this is your home issue. Keep it **open** — never mark it `done` or `cancelled`.
-Each new owner comment is a new request: classify it, interview only if needed, design, confirm,
-provision, and report. Park in `in_review` while waiting on the owner; move to `in_progress` when a
-new request arrives. Follow the `team-architect` skill.
+**Architect:** this is your recurring inbox. Each new owner comment is a new request: set
+`in_progress`, classify it, interview only if needed, design, confirm, provision, and report. When
+you've handled everything and are waiting on the owner, end the run by setting this issue **`done`**
+with a note like *"Idle — post a new request to wake me"* (a new comment re-wakes you). Only use
+`in_review` when a `ask_user_questions`/`request_confirmation` interaction is pending. Never loop
+re-explaining state — one clean disposition per run. Follow the `team-architect` skill.
