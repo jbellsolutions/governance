@@ -1362,8 +1362,8 @@ func upsertSingleObject(db *store.Store, resource string, data json.RawMessage) 
 		return db.UpsertCompaniesIssues(data)
 	case "companies_projects":
 		return db.UpsertCompaniesProjects(data)
-	case "routines":
-		return db.UpsertRoutines(data)
+	case "companies_routines":
+		return db.UpsertCompaniesRoutines(data)
 	case "comments":
 		return db.UpsertComments(data)
 	default:

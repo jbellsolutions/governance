@@ -267,12 +267,46 @@ func RegisterTools(s *server.MCPServer) {
 		makeAPIHandler("GET", "/api/issues/{issueId}/comments", true, false, nil, []mcpParamBinding{{PublicName: "issueId", WireName: "issueId", Location: "path"}}, []string{"issueId"}),
 	)
 	s.AddTool(
+		mcplib.NewTool("projects_get",
+			mcplib.WithDescription("Read a project. Required: projectId."),
+			mcplib.WithString("projectId", mcplib.Required(), mcplib.Description("Project id")),
+			mcplib.WithReadOnlyHintAnnotation(true),
+			mcplib.WithDestructiveHintAnnotation(false),
+			mcplib.WithOpenWorldHintAnnotation(true),
+		),
+		makeAPIHandler("GET", "/api/projects/{projectId}", true, false, nil, []mcpParamBinding{{PublicName: "projectId", WireName: "projectId", Location: "path"}}, []string{"projectId"}),
+	)
+	s.AddTool(
 		mcplib.NewTool("projects_update",
 			mcplib.WithDescription("Update a project. Required: projectId. Partial update."),
 			mcplib.WithString("projectId", mcplib.Required(), mcplib.Description("Project id")),
 			mcplib.WithOpenWorldHintAnnotation(true),
 		),
 		makeAPIHandler("PATCH", "/api/projects/{projectId}", false, false, nil, []mcpParamBinding{{PublicName: "projectId", WireName: "projectId", Location: "path"}}, []string{"projectId"}),
+	)
+	s.AddTool(
+		mcplib.NewTool("routines_get",
+			mcplib.WithDescription("Read a routine (incl. triggers/nextRunAt). Required: routineId."),
+			mcplib.WithString("routineId", mcplib.Required(), mcplib.Description("Routine id")),
+			mcplib.WithReadOnlyHintAnnotation(true),
+			mcplib.WithDestructiveHintAnnotation(false),
+			mcplib.WithOpenWorldHintAnnotation(true),
+		),
+		makeAPIHandler("GET", "/api/routines/{routineId}", true, false, nil, []mcpParamBinding{{PublicName: "routineId", WireName: "routineId", Location: "path"}}, []string{"routineId"}),
+	)
+	s.AddTool(
+		mcplib.NewTool("routines_update",
+			mcplib.WithDescription("Update a routine (title, triggers, status, assignee). Required: routineId. Optional: assigneeAgentId, description, priority (plus 3 more). Partial update."),
+			mcplib.WithString("routineId", mcplib.Required(), mcplib.Description("Routine id")),
+			mcplib.WithString("assigneeAgentId", mcplib.Description("Assignee agent id")),
+			mcplib.WithString("description", mcplib.Description("Description")),
+			mcplib.WithString("priority", mcplib.Description("Priority")),
+			mcplib.WithString("status", mcplib.Description("Status")),
+			mcplib.WithString("title", mcplib.Description("Title")),
+			mcplib.WithString("triggers", mcplib.Description("Triggers")),
+			mcplib.WithOpenWorldHintAnnotation(true),
+		),
+		makeAPIHandler("PATCH", "/api/routines/{routineId}", false, false, nil, []mcpParamBinding{{PublicName: "routineId", WireName: "routineId", Location: "path"}, {PublicName: "assigneeAgentId", WireName: "assigneeAgentId", Location: "body"}, {PublicName: "description", WireName: "description", Location: "body"}, {PublicName: "priority", WireName: "priority", Location: "body"}, {PublicName: "status", WireName: "status", Location: "body"}, {PublicName: "title", WireName: "title", Location: "body"}, {PublicName: "triggers", WireName: "triggers", Location: "body"}}, []string{"routineId"}),
 	)
 	// Search tool — faster than iterating list endpoints for finding specific items
 	s.AddTool(
@@ -921,7 +955,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 		"api":         "gov",
 		"description": "The verified subset of the Paperclip board API used to spin up and manage teams of AI agents — whole businesses",
 		"archetype":   "project-management",
-		"tool_count":  21,
+		"tool_count":  24,
 		// tool_surface tells agents which surface a capability lives on.
 		"tool_surface": "MCP exposes typed endpoint tools plus a runtime mirror of user-facing CLI commands. Endpoint tools keep typed schemas; command-mirror tools shell out to the companion gov-pp-cli binary.",
 		"auth": map[string]any{
@@ -959,7 +993,13 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 			{
 				"name":        "projects",
 				"description": "Manage projects",
-				"endpoints":   []string{"update"},
+				"endpoints":   []string{"get", "update"},
+				"searchable":  true,
+			},
+			{
+				"name":        "routines",
+				"description": "Manage routines",
+				"endpoints":   []string{"get", "update"},
 				"searchable":  true,
 			},
 		},

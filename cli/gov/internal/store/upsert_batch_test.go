@@ -971,12 +971,12 @@ func TestUpsertBatch_KeysCompaniesProjectsByChildAndParent(t *testing.T) {
 	}
 }
 
-// TestUpsertBatch_PopulatesRoutinesTable verifies that UpsertBatch
+// TestUpsertBatch_PopulatesCompaniesRoutinesTable verifies that UpsertBatch
 // dispatches paginated items into both the generic resources table AND the
-// typed routines table. Regression for issue #268: before the fix, paginated
+// typed companies_routines table. Regression for issue #268: before the fix, paginated
 // syncs only filled the generic resources table, so domain commands that
 // query the typed table saw zero rows.
-func TestUpsertBatch_PopulatesRoutinesTable(t *testing.T) {
+func TestUpsertBatch_PopulatesCompaniesRoutinesTable(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "data.db")
 	s, err := Open(dbPath)
 	if err != nil {
@@ -989,14 +989,14 @@ func TestUpsertBatch_PopulatesRoutinesTable(t *testing.T) {
 		json.RawMessage(`{"id": "test-002", "companies_id": "test-parent-001"}`),
 		json.RawMessage(`{"id": "test-003", "companies_id": "test-parent-001"}`),
 	}
-	if _, _, err := s.UpsertBatch("routines", items); err != nil {
+	if _, _, err := s.UpsertBatch("companies_routines", items); err != nil {
 		t.Fatalf("UpsertBatch: %v", err)
 	}
 
 	db := s.DB()
 
 	var generic int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM resources WHERE resource_type = ?`, "routines").Scan(&generic); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM resources WHERE resource_type = ?`, "companies_routines").Scan(&generic); err != nil {
 		t.Fatalf("count resources: %v", err)
 	}
 	if generic != len(items) {
@@ -1004,23 +1004,23 @@ func TestUpsertBatch_PopulatesRoutinesTable(t *testing.T) {
 	}
 
 	var typed int
-	typedQuery := fmt.Sprintf(`SELECT COUNT(*) FROM "%s"`, "routines")
+	typedQuery := fmt.Sprintf(`SELECT COUNT(*) FROM "%s"`, "companies_routines")
 	if err := db.QueryRow(typedQuery).Scan(&typed); err != nil {
-		t.Fatalf("count routines: %v", err)
+		t.Fatalf("count companies_routines: %v", err)
 	}
 	if typed != len(items) {
-		t.Fatalf("routines count = %d, want %d (typed table not populated by UpsertBatch)", typed, len(items))
+		t.Fatalf("companies_routines count = %d, want %d (typed table not populated by UpsertBatch)", typed, len(items))
 	}
 }
 
-// TestUpsertBatch_TypedFailureDoesNotStrandRoutinesGeneric exercises
+// TestUpsertBatch_TypedFailureDoesNotStrandCompaniesRoutinesGeneric exercises
 // the savepoint isolation around the typed-table dispatch. The fixture omits
 // the NOT NULL parent FK column so the typed insert fails; the savepoint
 // rolls back only the typed projection. The generic resources row inserted
 // just before must survive. Regression for issue #1392, where a single
 // outer transaction caused typed-table failures to cascade and silently
 // discard every successfully fetched API row.
-func TestUpsertBatch_TypedFailureDoesNotStrandRoutinesGeneric(t *testing.T) {
+func TestUpsertBatch_TypedFailureDoesNotStrandCompaniesRoutinesGeneric(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "data.db")
 	s, err := Open(dbPath)
 	if err != nil {
@@ -1035,7 +1035,7 @@ func TestUpsertBatch_TypedFailureDoesNotStrandRoutinesGeneric(t *testing.T) {
 		json.RawMessage(`{"id": "orphan-002"}`),
 		json.RawMessage(`{"id": "orphan-003"}`),
 	}
-	stored, extractFailures, err := s.UpsertBatch("routines", items)
+	stored, extractFailures, err := s.UpsertBatch("companies_routines", items)
 	if err != nil {
 		t.Fatalf("UpsertBatch: %v (typed-table failure must not propagate)", err)
 	}
@@ -1049,7 +1049,7 @@ func TestUpsertBatch_TypedFailureDoesNotStrandRoutinesGeneric(t *testing.T) {
 	db := s.DB()
 
 	var generic int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM resources WHERE resource_type = ?`, "routines").Scan(&generic); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM resources WHERE resource_type = ?`, "companies_routines").Scan(&generic); err != nil {
 		t.Fatalf("count resources: %v", err)
 	}
 	if generic != len(items) {
@@ -1057,20 +1057,20 @@ func TestUpsertBatch_TypedFailureDoesNotStrandRoutinesGeneric(t *testing.T) {
 	}
 
 	var typed int
-	typedQuery := fmt.Sprintf(`SELECT COUNT(*) FROM "%s"`, "routines")
+	typedQuery := fmt.Sprintf(`SELECT COUNT(*) FROM "%s"`, "companies_routines")
 	if err := db.QueryRow(typedQuery).Scan(&typed); err != nil {
-		t.Fatalf("count routines: %v", err)
+		t.Fatalf("count companies_routines: %v", err)
 	}
 	if typed != 0 {
-		t.Fatalf("routines count = %d, want 0 (typed insert violated NOT NULL on %q)", typed, "companies_id")
+		t.Fatalf("companies_routines count = %d, want 0 (typed insert violated NOT NULL on %q)", typed, "companies_id")
 	}
 }
 
-// TestUpsertBatch_KeysRoutinesByChildAndParent verifies dependent
+// TestUpsertBatch_KeysCompaniesRoutinesByChildAndParent verifies dependent
 // sub-collection rows with the same child id but different parent ids do not
 // overwrite one another in either the generic resources table or the typed
 // table. Regression for issue #2471.
-func TestUpsertBatch_KeysRoutinesByChildAndParent(t *testing.T) {
+func TestUpsertBatch_KeysCompaniesRoutinesByChildAndParent(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "data.db")
 	s, err := Open(dbPath)
 	if err != nil {
@@ -1084,7 +1084,7 @@ func TestUpsertBatch_KeysRoutinesByChildAndParent(t *testing.T) {
 		json.RawMessage(`{"id": "shared_child", "companies_id": "parent_B"}`),
 		json.RawMessage(`{"id": "other_child", "companies_id": "parent_A"}`),
 	}
-	stored, extractFailures, err := s.UpsertBatch("routines", items)
+	stored, extractFailures, err := s.UpsertBatch("companies_routines", items)
 	if err != nil {
 		t.Fatalf("UpsertBatch: %v", err)
 	}
@@ -1098,7 +1098,7 @@ func TestUpsertBatch_KeysRoutinesByChildAndParent(t *testing.T) {
 	db := s.DB()
 
 	var generic int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM resources WHERE resource_type = ?`, "routines").Scan(&generic); err != nil {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM resources WHERE resource_type = ?`, "companies_routines").Scan(&generic); err != nil {
 		t.Fatalf("count resources: %v", err)
 	}
 	if generic != len(items) {
@@ -1106,16 +1106,16 @@ func TestUpsertBatch_KeysRoutinesByChildAndParent(t *testing.T) {
 	}
 
 	var typed int
-	typedQuery := fmt.Sprintf(`SELECT COUNT(*) FROM "%s"`, "routines")
+	typedQuery := fmt.Sprintf(`SELECT COUNT(*) FROM "%s"`, "companies_routines")
 	if err := db.QueryRow(typedQuery).Scan(&typed); err != nil {
-		t.Fatalf("count routines: %v", err)
+		t.Fatalf("count companies_routines: %v", err)
 	}
 	if typed != len(items) {
-		t.Fatalf("routines count = %d, want %d (typed rows collapsed on child id)", typed, len(items))
+		t.Fatalf("companies_routines count = %d, want %d (typed rows collapsed on child id)", typed, len(items))
 	}
 
 	var parentMatches int
-	parentQuery := fmt.Sprintf(`SELECT COUNT(*) FROM "%s" WHERE "companies_id" = ?`, "routines")
+	parentQuery := fmt.Sprintf(`SELECT COUNT(*) FROM "%s" WHERE "companies_id" = ?`, "companies_routines")
 	if err := db.QueryRow(parentQuery, "parent_A").Scan(&parentMatches); err != nil {
 		t.Fatalf("count by companies_id: %v", err)
 	}

@@ -233,6 +233,8 @@ Run 'gov-pp-cli doctor' to verify auth and connectivity.`,
 	rootCmd.AddCommand(newAgentsCmd(flags))
 	rootCmd.AddCommand(newCompaniesCmd(flags))
 	rootCmd.AddCommand(newIssuesCmd(flags))
+	rootCmd.AddCommand(newProjectsCmd(flags))
+	rootCmd.AddCommand(newRoutinesCmd(flags))
 	rootCmd.AddCommand(newDoctorCmd(flags))
 	rootCmd.AddCommand(newAuthCmd(flags))
 	rootCmd.AddCommand(newAgentContextCmd(rootCmd))
@@ -246,8 +248,6 @@ Run 'gov-pp-cli doctor' to verify auth and connectivity.`,
 	rootCmd.AddCommand(newStaleCmd(flags))
 	rootCmd.AddCommand(newOrphansCmd(flags))
 	rootCmd.AddCommand(newLoadCmd(flags))
-	rootCmd.AddCommand(newAPICmd(flags))
-	rootCmd.AddCommand(newProjectsPromotedCmd(flags))
 	rootCmd.AddCommand(newVersionCmd())
 
 	return rootCmd

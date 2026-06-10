@@ -7,16 +7,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newIssuesCmd(flags *rootFlags) *cobra.Command {
+func newRoutinesCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:         "issues",
-		Short:       "Get and update issues",
+		Use:         "routines",
+		Short:       "Get and update routines",
 		Annotations: map[string]string{"mcp:read-only": "true"},
 		RunE:        parentNoSubcommandRunE(flags),
 	}
 
-	cmd.AddCommand(newIssuesGetCmd(flags))
-	cmd.AddCommand(newIssuesUpdateCmd(flags))
-	cmd.AddCommand(newIssuesCommentsCmd(flags))
+	cmd.AddCommand(newRoutinesGetCmd(flags))
+	cmd.AddCommand(newRoutinesUpdateCmd(flags))
 	return cmd
 }

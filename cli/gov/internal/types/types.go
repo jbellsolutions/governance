@@ -103,3 +103,12 @@ type RoutineTrigger struct {
 	Kind           string `json:"kind"`
 	Timezone       string `json:"timezone"`
 }
+
+type RoutineUpdate struct {
+	AssigneeAgentId string          `json:"assigneeAgentId"`
+	Description     string          `json:"description"`
+	Priority        string          `json:"priority"`
+	Status          string          `json:"status"`
+	Title           string          `json:"title"`
+	Triggers        json.RawMessage `json:"triggers"`
+}

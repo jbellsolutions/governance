@@ -179,7 +179,15 @@ Manage issues
 
 Manage projects
 
-- **`gov-pp-cli projects <projectId>`** - Update a project
+- **`gov-pp-cli projects get`** - Read a project
+- **`gov-pp-cli projects update`** - Update a project
+
+### routines
+
+Manage routines
+
+- **`gov-pp-cli routines get`** - Read a routine (incl. triggers/nextRunAt)
+- **`gov-pp-cli routines update`** - Update a routine (title, triggers, status, assignee)
 
 
 ## Output Formats

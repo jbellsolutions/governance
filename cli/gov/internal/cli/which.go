@@ -47,7 +47,10 @@ var whichIndex = []whichEntry{
 	{Command: "issues update", Description: "Update an issue (status", Group: "issues"},
 	{Command: "issues comments add", Description: "Add a comment (this is how you \"chat\" with an assigned agent — it wakes on new comments)", Group: "issues"},
 	{Command: "issues comments list", Description: "List comments", Group: "issues"},
+	{Command: "projects get", Description: "Read a project", Group: "projects"},
 	{Command: "projects update", Description: "Update a project", Group: "projects"},
+	{Command: "routines get", Description: "Read a routine (incl. triggers/nextRunAt)", Group: "routines"},
+	{Command: "routines update", Description: "Update a routine (title, triggers, status, assignee)", Group: "routines"},
 }
 
 // whichMatch pairs an index entry with its ranking score for a query.

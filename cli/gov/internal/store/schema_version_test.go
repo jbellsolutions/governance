@@ -1018,11 +1018,11 @@ func TestMigrate_AddsColumnsOnUpgrade_CompaniesProjects(t *testing.T) {
 	}
 }
 
-// TestMigrate_AddsColumnsOnUpgrade_Routines verifies that opening a
+// TestMigrate_AddsColumnsOnUpgrade_CompaniesRoutines verifies that opening a
 // database created by an older binary succeeds and adds newly generated
 // columns before CREATE INDEX runs against the pre-existing table. Regression
 // coverage for parent_id upgrades and indexed generated columns.
-func TestMigrate_AddsColumnsOnUpgrade_Routines(t *testing.T) {
+func TestMigrate_AddsColumnsOnUpgrade_CompaniesRoutines(t *testing.T) {
 	dbPath := filepath.Join(t.TempDir(), "data.db")
 
 	// Pre-create the DB with the older table shape: id, data, synced_at and
@@ -1031,7 +1031,7 @@ func TestMigrate_AddsColumnsOnUpgrade_Routines(t *testing.T) {
 	if err != nil {
 		t.Fatalf("open raw: %v", err)
 	}
-	if _, err := raw.Exec(`CREATE TABLE "routines" (
+	if _, err := raw.Exec(`CREATE TABLE "companies_routines" (
 		id TEXT PRIMARY KEY,
 		data JSON NOT NULL,
 		synced_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -1050,7 +1050,7 @@ func TestMigrate_AddsColumnsOnUpgrade_Routines(t *testing.T) {
 	defer s.Close()
 
 	// The migration must have added every generated column.
-	rows, err := s.DB().Query(`PRAGMA table_info("routines")`)
+	rows, err := s.DB().Query(`PRAGMA table_info("companies_routines")`)
 	if err != nil {
 		t.Fatalf("table_info: %v", err)
 	}
@@ -1075,7 +1075,7 @@ func TestMigrate_AddsColumnsOnUpgrade_Routines(t *testing.T) {
 		"companies_id",
 	} {
 		if !hasColumn[want] {
-			t.Fatalf("%s column missing from routines after migrate", want)
+			t.Fatalf("%s column missing from companies_routines after migrate", want)
 		}
 	}
 }

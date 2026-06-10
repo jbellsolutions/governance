@@ -278,7 +278,7 @@ func (s *Store) backfillColumns(ctx context.Context, conn *sql.Conn) error {
 		{table: "imports", column: "companies_id", decl: "TEXT"},
 		{table: "companies_issues", column: "companies_id", decl: "TEXT"},
 		{table: "companies_projects", column: "companies_id", decl: "TEXT"},
-		{table: "routines", column: "companies_id", decl: "TEXT"},
+		{table: "companies_routines", column: "companies_id", decl: "TEXT"},
 		{table: "comments", column: "issues_id", decl: "TEXT"},
 		{table: "sync_state", column: "last_cursor", decl: "TEXT"},
 		{table: "sync_state", column: "last_synced_at", decl: "DATETIME"},
@@ -372,13 +372,13 @@ func (s *Store) migrate(ctx context.Context) error {
 			"synced_at" DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`CREATE INDEX IF NOT EXISTS "idx_companies_projects_companies_id" ON "companies_projects"("companies_id")`,
-		`CREATE TABLE IF NOT EXISTS "routines" (
+		`CREATE TABLE IF NOT EXISTS "companies_routines" (
 			"id" TEXT PRIMARY KEY,
 			"companies_id" TEXT NOT NULL,
 			"data" JSON NOT NULL,
 			"synced_at" DATETIME DEFAULT CURRENT_TIMESTAMP
 		)`,
-		`CREATE INDEX IF NOT EXISTS "idx_routines_companies_id" ON "routines"("companies_id")`,
+		`CREATE INDEX IF NOT EXISTS "idx_companies_routines_companies_id" ON "companies_routines"("companies_id")`,
 		`CREATE TABLE IF NOT EXISTS "comments" (
 			"id" TEXT PRIMARY KEY,
 			"issues_id" TEXT NOT NULL,
@@ -1269,14 +1269,14 @@ func (s *Store) UpsertCompaniesProjects(data json.RawMessage) error {
 	return tx.Commit()
 }
 
-// upsertRoutinesTx writes the per-resource domain-table portion of a
-// routines upsert inside an existing transaction. The caller is
+// upsertCompaniesRoutinesTx writes the per-resource domain-table portion of a
+// companies_routines upsert inside an existing transaction. The caller is
 // responsible for the generic resources insert (via upsertGenericResourceTx)
 // and for committing the tx. Splitting this out lets UpsertBatch dispatch
 // domain inserts per item without opening a per-item transaction.
-func (s *Store) upsertRoutinesTx(tx *sql.Tx, id string, obj map[string]any, data json.RawMessage) error {
+func (s *Store) upsertCompaniesRoutinesTx(tx *sql.Tx, id string, obj map[string]any, data json.RawMessage) error {
 	if _, err := tx.Exec(
-		`INSERT INTO "routines" ("id", "companies_id", "data", "synced_at")
+		`INSERT INTO "companies_routines" ("id", "companies_id", "data", "synced_at")
 		 VALUES (?, ?, ?, ?)
 		 ON CONFLICT("id") DO UPDATE SET "companies_id" = excluded."companies_id", "data" = excluded."data", "synced_at" = excluded."synced_at"`,
 		id,
@@ -1284,24 +1284,24 @@ func (s *Store) upsertRoutinesTx(tx *sql.Tx, id string, obj map[string]any, data
 		string(data),
 		time.Now().UTC().Format(time.RFC3339),
 	); err != nil {
-		return fmt.Errorf("insert into routines: %w", err)
+		return fmt.Errorf("insert into companies_routines: %w", err)
 	}
 
 	return nil
 }
 
-// UpsertRoutines inserts or updates a routines record with domain-specific columns.
-func (s *Store) UpsertRoutines(data json.RawMessage) error {
+// UpsertCompaniesRoutines inserts or updates a companies_routines record with domain-specific columns.
+func (s *Store) UpsertCompaniesRoutines(data json.RawMessage) error {
 	obj, err := DecodeJSONObject(data)
 	if err != nil {
-		return fmt.Errorf("unmarshaling routines: %w", err)
+		return fmt.Errorf("unmarshaling companies_routines: %w", err)
 	}
 
 	id := extractObjectID(obj)
 	if id == "" {
-		return fmt.Errorf("missing id for routines")
+		return fmt.Errorf("missing id for companies_routines")
 	}
-	storageID := resourceStorageID("routines", id, obj)
+	storageID := resourceStorageID("companies_routines", id, obj)
 
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
@@ -1311,10 +1311,10 @@ func (s *Store) UpsertRoutines(data json.RawMessage) error {
 	}
 	defer tx.Rollback()
 
-	if err := s.upsertGenericResourceTx(tx, "routines", storageID, data); err != nil {
+	if err := s.upsertGenericResourceTx(tx, "companies_routines", storageID, data); err != nil {
 		return err
 	}
-	if err := s.upsertRoutinesTx(tx, storageID, obj, data); err != nil {
+	if err := s.upsertCompaniesRoutinesTx(tx, storageID, obj, data); err != nil {
 		return err
 	}
 
@@ -1401,7 +1401,7 @@ var resourceParentKeyColumns = map[string]string{
 	"imports":            "companies_id",
 	"companies_issues":   "companies_id",
 	"companies_projects": "companies_id",
-	"routines":           "companies_id",
+	"companies_routines": "companies_id",
 	"comments":           "issues_id",
 }
 
@@ -1611,8 +1611,8 @@ func (s *Store) UpsertBatch(resourceType string, items []json.RawMessage) (int, 
 			typedErr = s.upsertCompaniesIssuesTx(tx, storageID, obj, item)
 		case "companies_projects":
 			typedErr = s.upsertCompaniesProjectsTx(tx, storageID, obj, item)
-		case "routines":
-			typedErr = s.upsertRoutinesTx(tx, storageID, obj, item)
+		case "companies_routines":
+			typedErr = s.upsertCompaniesRoutinesTx(tx, storageID, obj, item)
 		case "comments":
 			typedErr = s.upsertCommentsTx(tx, storageID, obj, item)
 		}

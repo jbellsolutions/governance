@@ -603,6 +603,21 @@
       ]
     },
     {
+      "name": "projects_get",
+      "description": "Read a project. Required: projectId.",
+      "method": "GET",
+      "path": "/api/projects/{projectId}",
+      "params": [
+        {
+          "name": "projectId",
+          "type": "string",
+          "location": "path",
+          "description": "Project id",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "projects_update",
       "description": "Update a project. Required: projectId. Partial update.",
       "method": "PATCH",
@@ -614,6 +629,72 @@
           "location": "path",
           "description": "Project id",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "routines_get",
+      "description": "Read a routine (incl. triggers/nextRunAt). Required: routineId.",
+      "method": "GET",
+      "path": "/api/routines/{routineId}",
+      "params": [
+        {
+          "name": "routineId",
+          "type": "string",
+          "location": "path",
+          "description": "Routine id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "routines_update",
+      "description": "Update a routine (title, triggers, status, assignee). Required: routineId. Optional: assigneeAgentId, description, priority (plus 3 more). Partial update.",
+      "method": "PATCH",
+      "path": "/api/routines/{routineId}",
+      "params": [
+        {
+          "name": "routineId",
+          "type": "string",
+          "location": "path",
+          "description": "Routine id",
+          "required": true
+        },
+        {
+          "name": "assigneeAgentId",
+          "type": "string",
+          "location": "body",
+          "description": "Assignee agent id"
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "location": "body",
+          "description": "Description"
+        },
+        {
+          "name": "priority",
+          "type": "string",
+          "location": "body",
+          "description": "Priority"
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "location": "body",
+          "description": "Status"
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "location": "body",
+          "description": "Title"
+        },
+        {
+          "name": "triggers",
+          "type": "array",
+          "location": "body",
+          "description": "Triggers"
         }
       ]
     }
