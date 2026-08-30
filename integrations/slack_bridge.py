@@ -1,19 +1,16 @@
 """
-Bidirectional Slack Bridge
-- Outbound: agent activity/alerts → Slack channels
-- Inbound: slash commands and button actions → agent controls
+Slack Web API helpers — outbound posting only.
+
+Low-level module used by integrations/slack_paperclip.py (the one inbound/outbound Slack relay —
+see that file and docs/SLACK.md). This module has no server of its own; it just posts to the Slack
+Web API and builds interactive-button payloads for outbound notifications.
 
 Requires:
   SLACK_BOT_TOKEN   = xoxb-...
-  SLACK_APP_TOKEN   = xapp-... (socket mode)
-  SLACK_SIGNING_SECRET
 """
 import os
 import json
-import threading
-import http.server
 import urllib.request
-import urllib.parse
 from typing import Optional
 
 
@@ -211,95 +208,6 @@ def post_approval_request(
         "text": f"Approval needed: {action}",
     })
     return resp.get("ok", False)
-
-
-# ── Inbound: Slash command + action webhook server ───────────────────────────
-
-# In-memory pending approvals: {request_id: threading.Event + response}
-_pending: dict = {}
-
-
-def register_approval(request_id: str) -> threading.Event:
-    """Register a pending approval and return an Event to wait on."""
-    event = threading.Event()
-    _pending[request_id] = {"event": event, "decision": None, "notes": ""}
-    return event
-
-
-def get_approval_result(request_id: str) -> dict:
-    """Get the result after approval event fires."""
-    return _pending.get(request_id, {"decision": "timeout", "notes": ""})
-
-
-class SlackWebhookHandler(http.server.BaseHTTPRequestHandler):
-    """Minimal HTTP server to receive Slack slash commands and interactive payloads."""
-
-    def log_message(self, format, *args):
-        pass  # Suppress default access logs
-
-    def do_POST(self):
-        length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(length).decode("utf-8")
-
-        # Slack sends application/x-www-form-urlencoded for slash commands
-        params = dict(urllib.parse.parse_qsl(raw))
-
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.end_headers()
-
-        if self.path == "/slack/commands":
-            response = self._handle_command(params)
-        elif self.path == "/slack/actions":
-            payload = json.loads(params.get("payload", "{}"))
-            response = self._handle_action(payload)
-        else:
-            response = {"text": "Unknown endpoint"}
-
-        self.wfile.write(json.dumps(response).encode())
-
-    def _handle_command(self, params: dict) -> dict:
-        command = params.get("command", "")
-        text = params.get("text", "").strip()
-
-        if command == "/crew-status":
-            return {"text": "Agent status: All systems operational. Use Paperclip dashboard for details."}
-        elif command == "/pause-agent":
-            agent_name = text or "unknown"
-            return {"text": f"Pause request for *{agent_name}* received. Processing..."}
-        elif command == "/budget-remaining":
-            return {"text": "Budget data: Connect Paperclip API for real-time budget status."}
-        elif command == "/approve-action":
-            request_id = text
-            if request_id in _pending:
-                _pending[request_id]["decision"] = "approved"
-                _pending[request_id]["event"].set()
-                return {"text": f"✅ Action {request_id} approved."}
-            return {"text": f"Unknown request ID: {request_id}"}
-        else:
-            return {"text": f"Unknown command: {command}"}
-
-    def _handle_action(self, payload: dict) -> dict:
-        for action in payload.get("actions", []):
-            action_id = action.get("action_id", "")
-            value = json.loads(action.get("value", "{}"))
-            request_id = value.get("request_id")
-            decision = value.get("decision")
-
-            if request_id and request_id in _pending:
-                _pending[request_id]["decision"] = decision
-                _pending[request_id]["event"].set()
-
-        return {"text": "Action received."}
-
-
-def start_slack_server(port: int = 3001):
-    """Start the Slack webhook receiver in a background thread."""
-    server = http.server.HTTPServer(("0.0.0.0", port), SlackWebhookHandler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    print(f"Slack webhook server running on port {port}")
-    return server
 
 
 # ── CLI test ────────────────────────────────────────────────────────────────

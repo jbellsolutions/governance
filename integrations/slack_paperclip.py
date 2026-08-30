@@ -8,16 +8,20 @@ Two directions:
   • Outbound : a poller watches each company's Owner-channel issue for new agent comments and posts
                them to the owner's Slack channel, so the conversation shows up in Slack.
 
-This needs a Paperclip board API key and Slack bot token:
+This needs a Paperclip board API key and Slack app credentials:
     PAPERCLIP_API_URL, PAPERCLIP_API_KEY     (board key, read+comment)
     SLACK_BOT_TOKEN                          (xoxb-…, chat:write + commands)
+    SLACK_SIGNING_SECRET                     (verifies inbound requests actually came from Slack —
+                                               required; the relay refuses to run without it)
     SLACK_OWNER_CHANNEL                       (default: #governance)
     SLACK_RELAY_PORT                          (default: 3001 — the slash-command receiver)
 
 Run:  python main.py --slack-relay
-Slack app setup is documented in docs/SLACK.md.
+Slack app setup: paste integrations/slack-manifest.yaml at api.slack.com/apps — see docs/SLACK.md.
 """
 import os
+import hmac
+import hashlib
 import json
 import time
 import threading
@@ -32,6 +36,8 @@ API_KEY = os.environ.get("PAPERCLIP_API_KEY", "")
 OWNER_CHANNEL = os.environ.get("SLACK_OWNER_CHANNEL", "#governance")
 RELAY_PORT = int(os.environ.get("SLACK_RELAY_PORT", "3001"))
 POLL = int(os.environ.get("SLACK_RELAY_POLL_SECONDS", "20"))
+SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", "")
+MAX_TIMESTAMP_SKEW = 60 * 5  # Slack's own recommendation: reject requests older than 5 minutes
 
 _CURSOR_TENANT = "system"
 _CURSOR_ENTITY = "slack_relay"
@@ -167,26 +173,66 @@ def _poll_loop():
 
 # ── Inbound: slash-command receiver ───────────────────────────────────────────
 
+HELP_TEXT = (
+    "*Available commands*\n"
+    "`/ceo <message>` — message the CEO agent of your default company; wakes it, reply lands here\n"
+    "`/team <agent> <message>` — message a specific team agent (MVP: currently routes to the CEO)\n"
+    "`/ceo help` or `/team help` — show this list\n"
+)
+
+
+def _verify_slack_signature(raw_body: bytes, timestamp: str, signature: str) -> bool:
+    """HMAC verification per Slack's request-signing spec. Rejects if SLACK_SIGNING_SECRET is
+    unset — refuse to run an unverified webhook rather than silently accept anything."""
+    if not SIGNING_SECRET:
+        return False
+    if not timestamp or not signature:
+        return False
+    try:
+        if abs(time.time() - float(timestamp)) > MAX_TIMESTAMP_SKEW:
+            return False
+    except ValueError:
+        return False
+    base = f"v0:{timestamp}:{raw_body.decode()}".encode()
+    digest = hmac.new(SIGNING_SECRET.encode(), base, hashlib.sha256).hexdigest()
+    expected = f"v0={digest}"
+    return hmac.compare_digest(expected, signature)
+
+
 class _Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
-        raw = self.rfile.read(length).decode()
-        params = dict(urllib.parse.parse_qsl(raw))
+        raw = self.rfile.read(length)
+
+        if not _verify_slack_signature(
+            raw,
+            self.headers.get("X-Slack-Request-Timestamp", ""),
+            self.headers.get("X-Slack-Signature", ""),
+        ):
+            self.send_response(401)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "invalid signature"}).encode())
+            return
+
+        params = dict(urllib.parse.parse_qsl(raw.decode()))
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
 
         command = params.get("command", "")
         text = params.get("text", "").strip()
-        if command in ("/ceo", "/team") and text:
+        if command in ("/ceo", "/team") and text.lower() in ("help", "commands", "?"):
+            resp = {"text": HELP_TEXT}
+        elif command in ("/ceo", "/team") and text:
             # /team <agent> <message> could target a specific agent; MVP routes all to CEO.
             status = send_to_ceo(text)
             resp = {"response_type": "in_channel", "text": f":outbox_tray: {status}"}
         elif command in ("/ceo", "/team"):
-            resp = {"text": "Usage: `/ceo <your message to the CEO>`"}
+            resp = {"text": HELP_TEXT}
         else:
             resp = {"text": f"Unknown command: {command}"}
         self.wfile.write(json.dumps(resp).encode())
@@ -199,10 +245,20 @@ def main() -> int:
     if not sb.SLACK_BOT_TOKEN:
         print("[slack-relay] SLACK_BOT_TOKEN required. Exiting.")
         return 1
+    if not SIGNING_SECRET:
+        print("[slack-relay] SLACK_SIGNING_SECRET required — without it every inbound request is "
+              "rejected (this endpoint can wake an agent and post as the owner, so it refuses to "
+              "run unverified). Get it from the Slack app's Basic Information page. Exiting.")
+        return 1
     threading.Thread(target=_poll_loop, daemon=True).start()
     server = http.server.HTTPServer(("0.0.0.0", RELAY_PORT), _Handler)
     print(f"[slack-relay] slash-command receiver on :{RELAY_PORT}  (point Slack /ceo here)")
     print(f"[slack-relay] owner channel: {OWNER_CHANNEL}")
+    sb._slack_post("chat.postMessage", {
+        "channel": OWNER_CHANNEL,
+        "text": f":electric_plug: Governance relay connected.\n{HELP_TEXT}",
+        "unfurl_links": False,
+    })
     try:
         server.serve_forever()
     except KeyboardInterrupt:

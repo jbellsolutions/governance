@@ -5,10 +5,9 @@ business company packages; Paperclip itself is the panel / orchestration plane.
 
 Usage:
   python main.py --specialists         # Start the Integrations sidecar (:8080)  ← primary
-  python main.py --slack               # Start Slack bridge only (:3001)
+  python main.py --archivist           # Backup sync: Paperclip -> Obsidian + Notion
+  python main.py --slack-relay         # Slack <-> Paperclip relay (talk to your CEO)
   python main.py --status              # System health check
-  python main.py --panel               # Legacy standalone panel (:8000) — optional
-  python main.py --serve               # Legacy governance API (:8000) — optional
 """
 import os
 import sys
@@ -21,70 +20,6 @@ load_dotenv()
 if "OPENROUTER_API_KEY" in os.environ:
     os.environ["OPENAI_API_KEY"] = os.environ["OPENROUTER_API_KEY"]
 os.environ.setdefault("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
-
-
-def cmd_panel(port: int = 8000):
-    """Start the governance web panel — the primary interface."""
-    import uvicorn
-    from governance.panel import app
-    print(f"\nGovernance Panel: http://0.0.0.0:{port}")
-    print(f"  Web UI:   http://localhost:{port}/")
-    print(f"  API docs: http://localhost:{port}/docs")
-    print(f"\nOpen http://localhost:{port} in your browser to manage businesses.")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
-
-
-def cmd_serve(port: int = 8000):
-    """Start the FastAPI governance control plane."""
-    import uvicorn
-    from fastapi import FastAPI
-    from fastapi.middleware.cors import CORSMiddleware
-
-    app = FastAPI(
-        title="Governance Control Plane",
-        description="Paperclip + CrewAI + OpenSwarm governance API",
-        version="1.0.0",
-    )
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-
-    @app.get("/health")
-    def health():
-        return {"status": "ok", "version": "1.0.0"}
-
-    @app.get("/status")
-    def system_status():
-        from governance.core import state_manager
-        return {
-            "services": {
-                "openrouter_key": bool(os.environ.get("OPENROUTER_API_KEY")),
-                "slack_token": bool(os.environ.get("SLACK_BOT_TOKEN")),
-                "composio_key": bool(os.environ.get("COMPOSIO_API_KEY")),
-                "paperclip_url": os.environ.get("PAPERCLIP_URL", "http://localhost:3000"),
-                "state_db": os.environ.get("STATE_DB_PATH", "/data/governance.db"),
-            },
-            "tenants": state_manager.list_tenants(),
-        }
-
-    @app.get("/tenants/{tenant_id}/logs")
-    def get_logs(tenant_id: str, crew_id: str = "executive_team", limit: int = 50):
-        from governance.core import state_manager
-        return state_manager.get_workflow_log(tenant_id, crew_id, limit)
-
-    @app.post("/webhook/budget-exceeded")
-    def budget_exceeded(workflow_id: str, reason: str, checkpoint_id: str = ""):
-        from governance.core.budget_gate import register_budget_webhook
-        register_budget_webhook(workflow_id, reason, checkpoint_id)
-        return {"status": "paused", "workflow_id": workflow_id}
-
-    # Start Slack bridge in background if configured
-    if os.environ.get("SLACK_BOT_TOKEN"):
-        from governance.integrations.slack_bridge import start_slack_server
-        start_slack_server(port=3001)
-        print("Slack bridge started on :3001")
-
-    print(f"\nGovernance Control Plane: http://0.0.0.0:{port}")
-    print(f"API docs:                  http://localhost:{port}/docs")
-    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
 
 
 def cmd_specialists(port: int = 8080):
@@ -107,27 +42,6 @@ def cmd_slack_relay():
     """Run the Slack <-> Paperclip relay (talk to your CEO from Slack)."""
     from governance.integrations.slack_paperclip import main as relay_main
     relay_main()
-
-
-def cmd_slack():
-    """Start Slack bridge in foreground (for testing)."""
-    import time
-    from governance.integrations.slack_bridge import start_slack_server, notify_agent_activity
-    server = start_slack_server(3001)
-    print("Slack bridge on :3001")
-    print("  POST /slack/commands  — slash commands")
-    print("  POST /slack/actions   — interactive button actions")
-
-    if os.environ.get("SLACK_BOT_TOKEN"):
-        ok = notify_agent_activity("System", "GovernanceSystem", "Slack bridge started", "success")
-        print(f"Test notification: {'sent' if ok else 'failed (check SLACK_BOT_TOKEN)'}")
-
-    try:
-        while True:
-            time.sleep(60)
-    except KeyboardInterrupt:
-        print("\nSlack bridge stopped.")
-        server.shutdown()
 
 
 def cmd_status():
@@ -168,15 +82,12 @@ def main():
     parser.add_argument("--specialists",  action="store_true",  help="Start the Integrations sidecar (:8080)")
     parser.add_argument("--archivist",    action="store_true",  help="Backup sync: Paperclip → Obsidian + Notion")
     parser.add_argument("--slack-relay",  dest="slack_relay", action="store_true", help="Slack <-> Paperclip relay (talk to your CEO)")
-    parser.add_argument("--slack",        action="store_true",  help="Start Slack bridge only (:3001)")
     parser.add_argument("--status",       action="store_true",  help="System health check")
-    parser.add_argument("--panel",        action="store_true",  help="Legacy standalone panel (:8000) — optional")
-    parser.add_argument("--serve",        action="store_true",  help="Legacy governance API (:8000) — optional")
     parser.add_argument("--port",         type=int, default=8000, help="Port for API server")
 
     args = parser.parse_args()
 
-    if not any([args.panel, args.serve, args.specialists, args.archivist, args.slack_relay, args.slack, args.status]):
+    if not any([args.specialists, args.archivist, args.slack_relay, args.status]):
         parser.print_help()
         print("\nQuick start:")
         print("  python main.py --specialists                   # Integrations sidecar — the agents' tools (:8080)")
@@ -196,12 +107,6 @@ def main():
         cmd_archivist()
     elif args.slack_relay:
         cmd_slack_relay()
-    elif args.slack:
-        cmd_slack()
-    elif args.panel:
-        cmd_panel(args.port)
-    elif args.serve:
-        cmd_serve(args.port)
 
 
 if __name__ == "__main__":

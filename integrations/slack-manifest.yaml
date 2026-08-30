@@ -1,0 +1,36 @@
+display_information:
+  name: Governance CEO
+  description: Talk to your Paperclip CEO agent from Slack.
+  background_color: "#1a1a2e"
+
+features:
+  bot_user:
+    display_name: Governance CEO
+    always_online: true
+  slash_commands:
+    - command: /ceo
+      url: https://137-184-151-136.sslip.io/slack/commands
+      description: Message your CEO agent
+      usage_hint: "what's our pipeline look like?"
+      should_escape: false
+    - command: /team
+      url: https://137-184-151-136.sslip.io/slack/commands
+      description: Message a specific team agent (MVP routes to the CEO)
+      usage_hint: "<agent> <message>"
+      should_escape: false
+
+oauth_config:
+  scopes:
+    bot:
+      - chat:write
+      - commands
+      - channels:read
+
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
+  # No `interactivity` block: the relay implements the /ceo and /team slash commands only, no
+  # interactive-button handling. Add interactivity back here only once something implements
+  # POST /slack/actions again (slack_bridge.py's button-payload helpers exist but currently have
+  # no inbound handler wired to them).
